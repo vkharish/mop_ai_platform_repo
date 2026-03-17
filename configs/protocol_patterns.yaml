@@ -1,0 +1,505 @@
+# MOP AI Platform — Protocol & Vendor Pattern Configuration
+#
+# The grammar engine uses these patterns for:
+#   1. Pre-LLM command detection (to count commands before LLM call)
+#   2. Post-LLM validation (to cross-check LLM extracted commands)
+#   3. Vendor/protocol tagging
+
+vendors:
+  cisco:
+    display_name: "Cisco IOS/IOS-XE/IOS-XR/NX-OS"
+    confidence_boost: 0.2
+    exec_commands:
+      # Show commands
+      - pattern: "^show\\s+"
+        mode: exec
+      - pattern: "^ping\\s+"
+        mode: exec
+      - pattern: "^traceroute\\s+"
+        mode: exec
+      - pattern: "^debug\\s+"
+        mode: exec
+      - pattern: "^clear\\s+"
+        mode: exec
+      - pattern: "^reload\\b"
+        mode: exec
+      - pattern: "^copy\\s+"
+        mode: exec
+    config_commands:
+      - pattern: "^configure\\s+terminal\\b"
+        mode: config
+      - pattern: "^conf\\s+t\\b"
+        mode: config
+      - pattern: "^interface\\s+"
+        mode: config
+      - pattern: "^router\\s+(bgp|ospf|isis|rip|eigrp)\\s+"
+        mode: config
+      - pattern: "^ip\\s+(route|address|prefix-list|access-list|community-list)\\s+"
+        mode: config
+      - pattern: "^mpls\\s+"
+        mode: config
+      - pattern: "^no\\s+"
+        mode: config
+      - pattern: "^end\\b"
+        mode: config
+      - pattern: "^exit\\b"
+        mode: config
+
+  juniper:
+    display_name: "Juniper Junos"
+    confidence_boost: 0.2
+    exec_commands:
+      - pattern: "^show\\s+"
+        mode: exec
+      - pattern: "^ping\\s+"
+        mode: exec
+      - pattern: "^traceroute\\s+"
+        mode: exec
+      - pattern: "^monitor\\s+"
+        mode: exec
+      - pattern: "^request\\s+"
+        mode: exec
+    config_commands:
+      - pattern: "^set\\s+"
+        mode: config
+      - pattern: "^delete\\s+"
+        mode: config
+      - pattern: "^deactivate\\s+"
+        mode: config
+      - pattern: "^activate\\s+"
+        mode: config
+      - pattern: "^commit\\b"
+        mode: config
+      - pattern: "^rollback\\s*\\d*\\b"
+        mode: config
+      - pattern: "^edit\\s+"
+        mode: config
+      - pattern: "^run\\s+"
+        mode: config
+
+  nokia:
+    display_name: "Nokia SR OS"
+    confidence_boost: 0.2
+    exec_commands:
+      - pattern: "^show\\s+"
+        mode: exec
+      - pattern: "^ping\\s+"
+        mode: exec
+      - pattern: "^traceroute\\s+"
+        mode: exec
+      - pattern: "^tools\\s+"
+        mode: exec
+      - pattern: "^debug\\s+"
+        mode: exec
+    config_commands:
+      - pattern: "^configure\\s+"
+        mode: config
+      - pattern: "^info\\b"
+        mode: config
+      - pattern: "^admin\\s+"
+        mode: config
+
+  arista:
+    display_name: "Arista EOS"
+    confidence_boost: 0.2
+    exec_commands:
+      - pattern: "^show\\s+"
+        mode: exec
+      - pattern: "^ping\\s+"
+        mode: exec
+      - pattern: "^traceroute\\s+"
+        mode: exec
+    config_commands:
+      - pattern: "^configure\\b"
+        mode: config
+      - pattern: "^interface\\s+"
+        mode: config
+      - pattern: "^router\\s+"
+        mode: config
+      - pattern: "^no\\s+"
+        mode: config
+
+  f5:
+    display_name: "F5 BIG-IP TMSH"
+    confidence_boost: 0.2
+    exec_commands:
+      - pattern: "^tmsh\\s+show\\s+"
+        mode: exec
+      - pattern: "^tmsh\\s+list\\s+"
+        mode: exec
+      - pattern: "^tmsh\\s+run\\s+"
+        mode: exec
+      - pattern: "^show\\s+sys\\s+"
+        mode: exec
+      - pattern: "^show\\s+ltm\\s+"
+        mode: exec
+      - pattern: "^show\\s+net\\s+"
+        mode: exec
+    config_commands:
+      - pattern: "^tmsh\\s+modify\\s+"
+        mode: config
+      - pattern: "^tmsh\\s+create\\s+"
+        mode: config
+      - pattern: "^tmsh\\s+delete\\s+"
+        mode: config
+      - pattern: "^tmsh\\s+save\\b"
+        mode: config
+      - pattern: "^modify\\s+(ltm|net|sys)\\s+"
+        mode: config
+      - pattern: "^create\\s+(ltm|net|sys)\\s+"
+        mode: config
+      - pattern: "^save\\s+sys\\s+config\\b"
+        mode: config
+
+  palo_alto:
+    display_name: "Palo Alto PAN-OS"
+    confidence_boost: 0.2
+    exec_commands:
+      - pattern: "^show\\s+system\\s+"
+        mode: exec
+      - pattern: "^show\\s+interface\\s+"
+        mode: exec
+      - pattern: "^show\\s+routing\\s+"
+        mode: exec
+      - pattern: "^show\\s+session\\s+"
+        mode: exec
+      - pattern: "^show\\s+security\\s+"
+        mode: exec
+      - pattern: "^debug\\s+"
+        mode: exec
+      - pattern: "^test\\s+(security-policy|routing)\\s+"
+        mode: exec
+    config_commands:
+      - pattern: "^set\\s+(deviceconfig|network|vsys|shared)\\s+"
+        mode: config
+      - pattern: "^edit\\s+"
+        mode: config
+      - pattern: "^delete\\s+"
+        mode: config
+      - pattern: "^commit\\b"
+        mode: config
+      - pattern: "^request\\s+(system|license)\\s+"
+        mode: config
+
+  checkpoint:
+    display_name: "Check Point Gaia / Clish"
+    confidence_boost: 0.2
+    exec_commands:
+      - pattern: "^show\\s+(configuration|route|interface|version)\\b"
+        mode: exec
+      - pattern: "^fw\\s+"
+        mode: exec
+      - pattern: "^cpinfo\\b"
+        mode: exec
+      - pattern: "^cphaprob\\b"
+        mode: exec
+      - pattern: "^clish\\s+"
+        mode: exec
+      - pattern: "^cpstop\\b"
+        mode: exec
+      - pattern: "^cpstart\\b"
+        mode: exec
+    config_commands:
+      - pattern: "^set\\s+(interface|route|hostname|timezone)\\s+"
+        mode: config
+      - pattern: "^add\\s+route\\b"
+        mode: config
+      - pattern: "^delete\\s+route\\b"
+        mode: config
+      - pattern: "^save\\s+config\\b"
+        mode: config
+
+  huawei:
+    display_name: "Huawei VRP"
+    confidence_boost: 0.2
+    exec_commands:
+      - pattern: "^display\\s+"
+        mode: exec
+      - pattern: "^ping\\s+"
+        mode: exec
+      - pattern: "^tracert\\s+"
+        mode: exec
+      - pattern: "^reset\\s+"
+        mode: exec
+    config_commands:
+      - pattern: "^system-view\\b"
+        mode: config
+      - pattern: "^interface\\s+"
+        mode: config
+      - pattern: "^bgp\\s+\\d+"
+        mode: config
+      - pattern: "^ospf\\s+"
+        mode: config
+      - pattern: "^isis\\s+"
+        mode: config
+      - pattern: "^undo\\s+"
+        mode: config
+      - pattern: "^commit\\b"
+        mode: config
+      - pattern: "^return\\b"
+        mode: config
+      - pattern: "^quit\\b"
+        mode: config
+
+  ericsson:
+    display_name: "Ericsson IPOS / SROS"
+    confidence_boost: 0.2
+    exec_commands:
+      - pattern: "^show\\s+"
+        mode: exec
+      - pattern: "^context\\s+"
+        mode: exec
+      - pattern: "^service\\s+show\\s+"
+        mode: exec
+    config_commands:
+      - pattern: "^configure\\s+"
+        mode: config
+      - pattern: "^context\\s+\\w+\\s+router"
+        mode: config
+      - pattern: "^no\\s+"
+        mode: config
+      - pattern: "^commit\\b"
+        mode: config
+
+  generic:
+    display_name: "Generic / Unknown Vendor"
+    confidence_boost: 0.0
+    exec_commands:
+      - pattern: "^show\\s+"
+        mode: exec
+      - pattern: "^display\\s+"
+        mode: exec
+      - pattern: "^ping\\s+"
+        mode: exec
+      - pattern: "^traceroute\\s+"
+        mode: exec
+      - pattern: "^tracert\\s+"
+        mode: exec
+
+protocols:
+  bgp:
+    keywords:
+      - bgp
+      - as-path
+      - neighbor
+      - route-reflector
+      - community
+      - confederation
+      - peer-group
+      - ebgp
+      - ibgp
+    commands:
+      - "show ip bgp"
+      - "show bgp"
+      - "show route protocol bgp"
+      - "show bgp summary"
+      - "show ip bgp summary"
+      - "show bgp neighbor"
+      - "show bgp ipv4"
+      - "show bgp ipv6"
+
+  ospf:
+    keywords:
+      - ospf
+      - area
+      - lsa
+      - spf
+      - dr
+      - bdr
+      - hello
+      - dead-interval
+    commands:
+      - "show ip ospf"
+      - "show ospf"
+      - "show ip ospf neighbor"
+      - "show ip ospf database"
+      - "show ospf neighbor"
+      - "show ospf database"
+
+  isis:
+    keywords:
+      - isis
+      - level-1
+      - level-2
+      - level1
+      - level2
+      - net
+      - clns
+      - csnp
+      - lsp
+    commands:
+      - "show isis"
+      - "show clns"
+      - "show isis neighbor"
+      - "show isis database"
+
+  mpls:
+    keywords:
+      - mpls
+      - ldp
+      - rsvp
+      - label
+      - lsp
+      - te
+      - traffic-engineering
+      - vpn
+      - l3vpn
+      - l2vpn
+    commands:
+      - "show mpls"
+      - "show label"
+      - "show ldp"
+      - "show rsvp"
+      - "show mpls forwarding"
+      - "show mpls ldp neighbor"
+
+  interface:
+    keywords:
+      - interface
+      - shutdown
+      - no shutdown
+      - bandwidth
+      - mtu
+      - duplex
+      - speed
+      - encapsulation
+    commands:
+      - "show interface"
+      - "show ip interface"
+      - "show interfaces"
+
+  vlan:
+    keywords:
+      - vlan
+      - trunk
+      - access
+      - switchport
+      - dot1q
+      - 802.1q
+    commands:
+      - "show vlan"
+      - "show interfaces trunk"
+      - "show vlan brief"
+
+  system:
+    keywords:
+      - ntp
+      - snmp
+      - syslog
+      - logging
+      - aaa
+      - tacacs
+      - radius
+      - ssh
+      - telnet
+    commands:
+      - "show ntp"
+      - "show clock"
+      - "show users"
+      - "show logging"
+      - "show version"
+      - "display ntp"
+      - "display version"
+
+  firewall:
+    keywords:
+      - firewall
+      - acl
+      - access-list
+      - policy
+      - nat
+      - zone
+      - permit
+      - deny
+      - inspect
+      - stateful
+    commands:
+      - "show firewall"
+      - "show access-list"
+      - "show nat"
+      - "fw stat"
+      - "fw ctl"
+      - "show security policy"
+      - "show ip access-list"
+
+  lb:
+    keywords:
+      - virtual-server
+      - pool
+      - node
+      - load-balance
+      - health-monitor
+      - persistence
+      - irule
+      - ltm
+      - slb
+    commands:
+      - "show ltm virtual"
+      - "show ltm pool"
+      - "show ltm node"
+      - "tmsh show ltm"
+      - "show run ltm"
+
+# Patterns that indicate a line is a CLI command (vendor-agnostic)
+generic_cli_indicators:
+  # Cisco / Arista / Nokia
+  - pattern: "^show\\s+\\w"
+  - pattern: "^ping\\s+\\S"
+  - pattern: "^traceroute\\s+\\S"
+  - pattern: "^configure\\b"
+  - pattern: "^conf\\s+t\\b"
+  - pattern: "^set\\s+\\w"
+  - pattern: "^no\\s+\\w"
+  - pattern: "^interface\\s+\\w"
+  - pattern: "^router\\s+(bgp|ospf|isis|rip|eigrp)"
+  - pattern: "^commit\\b"
+  - pattern: "^rollback\\b"
+  - pattern: "^ip\\s+(route|address|bgp|ospf|prefix)"
+  # Juniper
+  - pattern: "^delete\\s+\\w"
+  - pattern: "^deactivate\\s+"
+  - pattern: "^activate\\s+"
+  - pattern: "^edit\\s+\\w"
+  - pattern: "^run\\s+show\\s+"
+  - pattern: "^request\\s+system"
+  # Huawei VRP
+  - pattern: "^display\\s+\\w"
+  - pattern: "^undo\\s+\\w"
+  - pattern: "^system-view\\b"
+  - pattern: "^tracert\\s+\\S"
+  - pattern: "^quit\\b"
+  # F5 TMSH
+  - pattern: "^tmsh\\s+"
+  - pattern: "^modify\\s+(ltm|net|sys)\\s+"
+  - pattern: "^create\\s+(ltm|net|sys)\\s+"
+  - pattern: "^save\\s+sys\\s+config"
+  # Palo Alto
+  - pattern: "^test\\s+(security-policy|routing|nat-policy)"
+  # Check Point
+  - pattern: "^fw\\s+"
+  - pattern: "^cpinfo\\b"
+  - pattern: "^cpstop\\b"
+  - pattern: "^cpstart\\b"
+  - pattern: "^clish\\s+"
+  # Ericsson IPOS
+  - pattern: "^context\\s+\\w"
+  - pattern: "^service\\s+show\\s+"
+
+# Patterns that look like CLI prompts (should be stripped from commands)
+cli_prompt_patterns:
+  # Generic prompt patterns
+  - pattern: "^\\S+[>#]\\s*"
+  - pattern: "^\\[\\S+\\]\\s*[>#]\\s*"
+  # Cisco-style
+  - pattern: "^PE\\d+[>#]\\s*"
+  - pattern: "^CE\\d+[>#]\\s*"
+  - pattern: "^R\\d+[>#]\\s*"
+  - pattern: "^\\S+\\(config[\\w-]*\\)[>#]\\s*"
+  # Juniper: [edit protocols bgp]
+  - pattern: "^\\[edit[^\\]]*\\]\\s*"
+  # Nokia SR OS: admin@PE1>
+  - pattern: "^\\w+@[\\w.-]+[>#]\\s*"
+  # Huawei: <PE1>
+  - pattern: "^<[\\w.-]+>\\s*"
+  # F5: root@bigip(Active)(tmos)#
+  - pattern: "^\\w+@\\S+\\([^)]+\\)[>#]\\s*"
