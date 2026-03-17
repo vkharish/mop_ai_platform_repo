@@ -39,3 +39,7 @@ output/
 *.robot
 *_canonical.json
 *_cli_rules.json
+
+# Log files (keep the directory via logs/.gitkeep)
+logs/*.log
+logs/*.log.*

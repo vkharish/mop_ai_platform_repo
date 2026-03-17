@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MOP AI Platform</title>
+  <style>
+    :root {
+      --bg:        #0f1117;
+      --surface:   #1a1d27;
+      --surface2:  #22263a;
+      --border:    #2e3250;
+      --accent:    #5c6ef8;
+      --accent2:   #7c8cf8;
+      --green:     #22c55e;
+      --red:       #ef4444;
+      --yellow:    #f59e0b;
+      --text:      #e2e8f0;
+      --muted:     #94a3b8;
+      --radius:    10px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 14px;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 32px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; }
+    .logo-icon {
+      width: 32px; height: 32px; border-radius: 8px;
+      background: linear-gradient(135deg, var(--accent), #a855f7);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+    }
+    .logo-text { font-weight: 700; font-size: 16px; }
+    .logo-sub { color: var(--muted); font-size: 12px; margin-left: 4px; }
+    .header-links { display: flex; gap: 20px; }
+    .header-links a {
+      color: var(--muted); text-decoration: none; font-size: 13px;
+      transition: color .15s;
+    }
+    .header-links a:hover { color: var(--text); }
+
+    /* ── Layout ── */
+    .container {
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      gap: 0;
+      min-height: calc(100vh - 56px);
+    }
+
+    /* ── Left panel (form) ── */
+    .panel-left {
+      border-right: 1px solid var(--border);
+      padding: 28px 24px;
+      overflow-y: auto;
+    }
+    .panel-title {
+      font-size: 13px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: .06em; color: var(--muted); margin-bottom: 20px;
+    }
+
+    /* ── Drop zone ── */
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 32px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .2s, background .2s;
+      position: relative;
+    }
+    .drop-zone:hover, .drop-zone.drag-over {
+      border-color: var(--accent);
+      background: rgba(92,110,248,.06);
+    }
+    .drop-zone input[type=file] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%;
+    }
+    .drop-icon { font-size: 36px; margin-bottom: 10px; }
+    .drop-title { font-weight: 600; margin-bottom: 4px; }
+    .drop-sub { color: var(--muted); font-size: 12px; }
+    .file-chosen {
+      display: none; align-items: center; gap: 8px;
+      background: var(--surface2); border-radius: 6px;
+      padding: 8px 12px; margin-top: 12px; font-size: 13px;
+    }
+    .file-chosen.show { display: flex; }
+    .file-chosen .fname { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .file-chosen .fsize { color: var(--muted); font-size: 12px; }
+    .btn-clear {
+      background: none; border: none; color: var(--muted);
+      cursor: pointer; font-size: 16px; line-height: 1;
+    }
+    .btn-clear:hover { color: var(--red); }
+
+    /* ── Form fields ── */
+    .form-group { margin-top: 16px; }
+    label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    input[type=text], input[type=password], select {
+      width: 100%; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text); padding: 8px 12px; font-size: 13px;
+      outline: none; transition: border-color .15s;
+    }
+    input[type=text]:focus, input[type=password]:focus, select:focus {
+      border-color: var(--accent);
+    }
+    select option { background: var(--surface2); }
+
+    /* ── Toggles ── */
+    .toggles { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+    .toggle-row { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+    .toggle-row input[type=checkbox] { display: none; }
+    .toggle-switch {
+      width: 34px; height: 18px; border-radius: 9px; background: var(--surface2);
+      border: 1px solid var(--border); position: relative; flex-shrink: 0;
+      transition: background .2s;
+    }
+    .toggle-switch::after {
+      content: ''; position: absolute; top: 2px; left: 2px;
+      width: 12px; height: 12px; border-radius: 50%; background: var(--muted);
+      transition: left .2s, background .2s;
+    }
+    input:checked + .toggle-switch { background: var(--accent); border-color: var(--accent); }
+    input:checked + .toggle-switch::after { left: 18px; background: #fff; }
+    .toggle-label { font-size: 13px; }
+    .toggle-sub { font-size: 11px; color: var(--muted); }
+
+    /* ── Advanced section ── */
+    .advanced-toggle {
+      color: var(--muted); font-size: 12px; cursor: pointer;
+      margin-top: 14px; display: flex; align-items: center; gap: 6px;
+      user-select: none;
+    }
+    .advanced-toggle:hover { color: var(--text); }
+    .advanced-body { display: none; margin-top: 12px; }
+    .advanced-body.open { display: block; }
+
+    /* ── Submit ── */
+    .btn-submit {
+      margin-top: 24px; width: 100%;
+      background: var(--accent); color: #fff;
+      border: none; border-radius: 8px; padding: 11px;
+      font-size: 14px; font-weight: 600; cursor: pointer;
+      transition: background .15s, opacity .15s;
+    }
+    .btn-submit:hover:not(:disabled) { background: var(--accent2); }
+    .btn-submit:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* ── Divider ── */
+    .divider {
+      height: 1px; background: var(--border); margin: 24px 0;
+    }
+
+    /* ── Job history ── */
+    .history-title {
+      font-size: 12px; color: var(--muted); font-weight: 600;
+      text-transform: uppercase; letter-spacing: .06em; margin-bottom: 12px;
+    }
+    .job-list { display: flex; flex-direction: column; gap: 6px; }
+    .job-item {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 6px; padding: 8px 12px; cursor: pointer;
+      transition: border-color .15s; display: flex; align-items: center; gap: 8px;
+    }
+    .job-item:hover { border-color: var(--accent); }
+    .job-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .job-dot.done       { background: var(--green); }
+    .job-dot.processing { background: var(--yellow); }
+    .job-dot.failed     { background: var(--red); }
+    .job-dot.pending    { background: var(--muted); }
+    .job-info { flex: 1; overflow: hidden; }
+    .job-fname { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .job-meta { font-size: 11px; color: var(--muted); margin-top: 1px; }
+    .no-history { font-size: 13px; color: var(--muted); }
+
+    /* ── Right panel (results) ── */
+    .panel-right {
+      padding: 32px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Idle state ── */
+    .idle-state {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 16px;
+      color: var(--muted); text-align: center;
+    }
+    .idle-icon { font-size: 56px; opacity: .3; }
+    .idle-title { font-size: 18px; font-weight: 600; color: var(--text); opacity: .4; }
+    .idle-sub { font-size: 13px; max-width: 320px; opacity: .6; }
+
+    /* ── Processing state ── */
+    .processing-state {
+      display: none; flex-direction: column; gap: 20px;
+    }
+    .processing-state.show { display: flex; }
+    .proc-header { display: flex; align-items: center; gap: 12px; }
+    .spinner {
+      width: 22px; height: 22px; border: 3px solid var(--border);
+      border-top-color: var(--accent); border-radius: 50%;
+      animation: spin 0.7s linear infinite; flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .proc-title { font-size: 16px; font-weight: 600; }
+    .proc-file { font-size: 13px; color: var(--muted); margin-top: 2px; }
+    .proc-message { color: var(--muted); font-size: 13px; }
+    .proc-elapsed { font-size: 12px; color: var(--muted); }
+    .proc-bar-bg {
+      height: 4px; border-radius: 2px; background: var(--surface2); overflow: hidden;
+    }
+    .proc-bar {
+      height: 100%; width: 0; border-radius: 2px;
+      background: linear-gradient(90deg, var(--accent), #a855f7);
+      animation: bar-pulse 2s ease-in-out infinite;
+    }
+    @keyframes bar-pulse {
+      0%  { opacity: 1; }
+      50% { opacity: .6; }
+      100%{ opacity: 1; }
+    }
+
+    /* ── Result state ── */
+    .result-state { display: none; flex-direction: column; gap: 20px; }
+    .result-state.show { display: flex; }
+
+    .result-header { display: flex; align-items: flex-start; gap: 12px; }
+    .result-badge {
+      width: 36px; height: 36px; border-radius: 8px;
+      background: rgba(34,197,94,.15); display: flex;
+      align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;
+    }
+    .result-title { font-size: 18px; font-weight: 700; }
+    .result-file { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+    /* ── Stat cards ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+    }
+    .stat-card {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 16px;
+    }
+    .stat-value { font-size: 26px; font-weight: 700; line-height: 1; }
+    .stat-value.accent { color: var(--accent); }
+    .stat-value.green  { color: var(--green); }
+    .stat-label { font-size: 11px; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: .04em; }
+
+    /* ── TOON badge ── */
+    .toon-badge {
+      background: rgba(92,110,248,.12); border: 1px solid rgba(92,110,248,.3);
+      border-radius: 6px; padding: 12px 16px; display: flex; gap: 12px; align-items: center;
+    }
+    .toon-badge.off {
+      background: rgba(148,163,184,.07); border-color: var(--border);
+    }
+    .toon-icon { font-size: 20px; }
+    .toon-text { flex: 1; }
+    .toon-title { font-size: 13px; font-weight: 600; }
+    .toon-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+    /* ── Downloads ── */
+    .downloads-title {
+      font-size: 13px; font-weight: 600; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .06em; margin-bottom: 12px;
+    }
+    .download-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+    }
+    .dl-btn {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 14px 16px; cursor: pointer;
+      text-decoration: none; color: var(--text);
+      display: flex; align-items: center; gap: 10px;
+      transition: border-color .15s, background .15s;
+    }
+    .dl-btn:hover {
+      border-color: var(--accent);
+      background: rgba(92,110,248,.07);
+    }
+    .dl-icon { font-size: 22px; }
+    .dl-info { flex: 1; }
+    .dl-name { font-size: 13px; font-weight: 600; }
+    .dl-type { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .dl-arrow { color: var(--muted); font-size: 16px; }
+
+    /* ── Guardrails ── */
+    .guardrails-block {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 16px;
+    }
+    .guardrails-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+    .guardrails-title { font-size: 13px; font-weight: 600; }
+    .tag {
+      font-size: 11px; padding: 2px 8px; border-radius: 20px; font-weight: 600;
+    }
+    .tag.pass { background: rgba(34,197,94,.15); color: var(--green); }
+    .tag.fail { background: rgba(239,68,68,.15); color: var(--red); }
+    .tag.warn { background: rgba(245,158,11,.15); color: var(--yellow); }
+    .guardrails-items { display: flex; flex-direction: column; gap: 4px; }
+    .gitem { font-size: 12px; color: var(--muted); display: flex; gap: 6px; }
+    .gitem::before { content: '›'; color: var(--accent); }
+
+    /* ── Error state ── */
+    .error-state { display: none; flex-direction: column; gap: 16px; }
+    .error-state.show { display: flex; }
+    .error-card {
+      background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.3);
+      border-radius: var(--radius); padding: 20px;
+    }
+    .error-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .error-title { font-size: 16px; font-weight: 600; color: var(--red); }
+    .error-msg { font-size: 13px; color: var(--muted); font-family: monospace; line-height: 1.6; }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+      .container { grid-template-columns: 1fr; }
+      .panel-left { border-right: none; border-bottom: 1px solid var(--border); }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">⚡</div>
+    <span class="logo-text">MOP AI Platform</span>
+    <span class="logo-sub">v1.0</span>
+  </div>
+  <div class="header-links">
+    <a href="/docs" target="_blank">API Docs</a>
+    <a href="/api/v1/jobs" target="_blank">Jobs JSON</a>
+    <a href="https://github.com/vkharish/mop_ai_platform_repo" target="_blank">GitHub</a>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- ────────── LEFT PANEL ────────── -->
+  <div class="panel-left">
+    <div class="panel-title">Upload Document</div>
+
+    <div class="drop-zone" id="dropZone">
+      <input type="file" id="fileInput" accept=".pdf,.docx,.txt,.text,.md" />
+      <div class="drop-icon">📄</div>
+      <div class="drop-title">Drop your MOP here</div>
+      <div class="drop-sub">PDF, DOCX, TXT, MD — or click to browse</div>
+    </div>
+    <div class="file-chosen" id="fileChosen">
+      <span class="fname" id="fileChosenName"></span>
+      <span class="fsize" id="fileChosenSize"></span>
+      <button class="btn-clear" id="btnClear" title="Remove file">✕</button>
+    </div>
+
+    <div class="form-group">
+      <label>Document Title <span style="color:var(--muted)">(optional override)</span></label>
+      <input type="text" id="inputTitle" placeholder="e.g. BGP Migration MOP" />
+    </div>
+
+    <div class="form-group">
+      <label>Claude Model</label>
+      <select id="inputModel">
+        <option value="claude-sonnet-4-6" selected>claude-sonnet-4-6 (recommended)</option>
+        <option value="claude-opus-4-6">claude-opus-4-6 (most capable)</option>
+        <option value="claude-haiku-4-5-20251001">claude-haiku-4-5 (fastest)</option>
+      </select>
+    </div>
+
+    <div class="toggles">
+      <label class="toggle-row">
+        <input type="checkbox" id="toggleSkipToon" />
+        <span class="toggle-switch"></span>
+        <span>
+          <div class="toggle-label">Skip TOON compression</div>
+          <div class="toggle-sub">Send raw text to LLM (slower, uses more tokens)</div>
+        </span>
+      </label>
+      <label class="toggle-row">
+        <input type="checkbox" id="toggleSkipGuardrails" />
+        <span class="toggle-switch"></span>
+        <span>
+          <div class="toggle-label">Skip guardrails</div>
+          <div class="toggle-sub">Bypass post-LLM quality checks (not recommended)</div>
+        </span>
+      </label>
+    </div>
+
+    <div class="advanced-toggle" id="advancedToggle">
+      <span id="advArrow">▸</span> Advanced
+    </div>
+    <div class="advanced-body" id="advancedBody">
+      <div class="form-group">
+        <label>Anthropic API Key <span style="color:var(--muted)">(overrides env var)</span></label>
+        <input type="password" id="inputAnthropicKey" placeholder="sk-ant-…" autocomplete="off" />
+      </div>
+      <div class="form-group">
+        <label>Platform API Key <span style="color:var(--muted)">(X-API-Key, if configured)</span></label>
+        <input type="password" id="inputPlatformKey" placeholder="Leave blank if not set" autocomplete="off" />
+      </div>
+    </div>
+
+    <button class="btn-submit" id="btnSubmit" disabled>
+      Process Document
+    </button>
+
+    <div class="divider"></div>
+
+    <!-- Recent jobs -->
+    <div class="history-title">Recent Jobs</div>
+    <div class="job-list" id="jobList">
+      <div class="no-history" id="noHistory">No recent jobs</div>
+    </div>
+  </div>
+
+  <!-- ────────── RIGHT PANEL ────────── -->
+  <div class="panel-right" id="panelRight">
+
+    <!-- Idle -->
+    <div class="idle-state" id="idleState">
+      <div class="idle-icon">🚀</div>
+      <div class="idle-title">Ready to process</div>
+      <div class="idle-sub">Upload a PDF, DOCX, or TXT MOP document on the left to generate Zephyr test cases, Robot Framework tests, and CLI validation rules.</div>
+    </div>
+
+    <!-- Processing -->
+    <div class="processing-state" id="processingState">
+      <div class="proc-header">
+        <div class="spinner"></div>
+        <div>
+          <div class="proc-title">Processing…</div>
+          <div class="proc-file" id="procFile"></div>
+        </div>
+      </div>
+      <div class="proc-bar-bg"><div class="proc-bar" id="procBar"></div></div>
+      <div class="proc-message" id="procMessage"></div>
+      <div class="proc-elapsed" id="procElapsed"></div>
+    </div>
+
+    <!-- Result -->
+    <div class="result-state" id="resultState">
+      <div class="result-header">
+        <div class="result-badge">✅</div>
+        <div>
+          <div class="result-title" id="resultTitle"></div>
+          <div class="result-file" id="resultFile"></div>
+        </div>
+      </div>
+
+      <div class="stats-grid" id="statsGrid"></div>
+
+      <div id="toonBadge"></div>
+
+      <div>
+        <div class="downloads-title">Download Artifacts</div>
+        <div class="download-grid" id="downloadGrid"></div>
+      </div>
+
+      <div id="guardrailsBlock"></div>
+    </div>
+
+    <!-- Error -->
+    <div class="error-state" id="errorState">
+      <div class="error-card">
+        <div class="error-header">
+          <span style="font-size:22px">❌</span>
+          <div class="error-title">Processing Failed</div>
+        </div>
+        <div class="error-msg" id="errorMsg"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  // ── State ──────────────────────────────────────────────────────────────────
+  let selectedFile  = null;
+  let currentJobId  = null;
+  let pollTimer     = null;
+  let startTime     = null;
+  let elapsedTimer  = null;
+
+  // ── DOM refs ────────────────────────────────────────────────────────────────
+  const dropZone      = document.getElementById('dropZone');
+  const fileInput     = document.getElementById('fileInput');
+  const fileChosen    = document.getElementById('fileChosen');
+  const fileChosenName= document.getElementById('fileChosenName');
+  const fileChosenSize= document.getElementById('fileChosenSize');
+  const btnClear      = document.getElementById('btnClear');
+  const btnSubmit     = document.getElementById('btnSubmit');
+  const jobList       = document.getElementById('jobList');
+  const noHistory     = document.getElementById('noHistory');
+
+  const idleState     = document.getElementById('idleState');
+  const processingState = document.getElementById('processingState');
+  const resultState   = document.getElementById('resultState');
+  const errorState    = document.getElementById('errorState');
+
+  // ── File selection ──────────────────────────────────────────────────────────
+  dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', ()=> dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault(); dropZone.classList.remove('drag-over');
+    if (e.dataTransfer.files.length) setFile(e.dataTransfer.files[0]);
+  });
+  fileInput.addEventListener('change', () => { if (fileInput.files.length) setFile(fileInput.files[0]); });
+
+  function setFile(f) {
+    selectedFile = f;
+    fileChosenName.textContent = f.name;
+    fileChosenSize.textContent = formatBytes(f.size);
+    fileChosen.classList.add('show');
+    btnSubmit.disabled = false;
+  }
+
+  btnClear.addEventListener('click', e => {
+    e.stopPropagation();
+    selectedFile = null;
+    fileInput.value = '';
+    fileChosen.classList.remove('show');
+    btnSubmit.disabled = true;
+  });
+
+  // ── Advanced toggle ─────────────────────────────────────────────────────────
+  const advancedToggle = document.getElementById('advancedToggle');
+  const advancedBody   = document.getElementById('advancedBody');
+  const advArrow       = document.getElementById('advArrow');
+  advancedToggle.addEventListener('click', () => {
+    const open = advancedBody.classList.toggle('open');
+    advArrow.textContent = open ? '▾' : '▸';
+  });
+
+  // ── Submit ──────────────────────────────────────────────────────────────────
+  btnSubmit.addEventListener('click', async () => {
+    if (!selectedFile) return;
+    await submitJob();
+  });
+
+  async function submitJob() {
+    const form = new FormData();
+    form.append('file',         selectedFile);
+    form.append('model',        document.getElementById('inputModel').value);
+    form.append('skip_toon',    document.getElementById('toggleSkipToon').checked);
+    form.append('skip_guardrails', document.getElementById('toggleSkipGuardrails').checked);
+    const titleVal = document.getElementById('inputTitle').value.trim();
+    if (titleVal) form.append('title', titleVal);
+    const antKey = document.getElementById('inputAnthropicKey').value.trim();
+    if (antKey) form.append('anthropic_api_key', antKey);
+
+    const platKey = document.getElementById('inputPlatformKey').value.trim();
+    const headers = {};
+    if (platKey) headers['X-API-Key'] = platKey;
+
+    btnSubmit.disabled = true;
+    showPanel('processing');
+    document.getElementById('procFile').textContent = selectedFile.name;
+    document.getElementById('procMessage').textContent = 'Uploading document…';
+    startElapsed();
+
+    try {
+      const res = await fetch('/api/v1/process', { method: 'POST', headers, body: form });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: res.statusText }));
+        throw new Error(typeof err.detail === 'string' ? err.detail : JSON.stringify(err.detail));
+      }
+      const data = await res.json();
+      currentJobId = data.job_id;
+      startPolling(platKey);
+    } catch (err) {
+      stopElapsed();
+      showPanel('error');
+      document.getElementById('errorMsg').textContent = err.message;
+      btnSubmit.disabled = false;
+    }
+  }
+
+  // ── Polling ─────────────────────────────────────────────────────────────────
+  function startPolling(platKey) {
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = setInterval(() => pollStatus(platKey), 2000);
+  }
+
+  async function pollStatus(platKey) {
+    if (!currentJobId) return;
+    try {
+      const headers = platKey ? { 'X-API-Key': platKey } : {};
+      const res = await fetch(`/api/v1/status/${currentJobId}`, { headers });
+      if (!res.ok) return;
+      const job = await res.json();
+
+      document.getElementById('procMessage').textContent = job.progress_message || '';
+
+      if (job.status === 'done') {
+        clearInterval(pollTimer);
+        stopElapsed();
+        const r = await fetch(`/api/v1/result/${currentJobId}`, { headers });
+        const resultData = await r.json();
+        showResult(resultData);
+        loadHistory();
+      } else if (job.status === 'failed') {
+        clearInterval(pollTimer);
+        stopElapsed();
+        showPanel('error');
+        document.getElementById('errorMsg').textContent = job.error || 'Unknown error';
+        btnSubmit.disabled = false;
+        loadHistory();
+      }
+    } catch (_) { /* network blip — keep polling */ }
+  }
+
+  // ── Result rendering ────────────────────────────────────────────────────────
+  function showResult(data) {
+    showPanel('result');
+    btnSubmit.disabled = false;
+    const res = data.result || {};
+
+    document.getElementById('resultTitle').textContent =
+      res.document_title || data.filename || 'Document Processed';
+    document.getElementById('resultFile').textContent =
+      `${data.filename}  ·  ${res.source_format?.toUpperCase() || ''}  ·  ${res.mop_structure || ''}  ·  ${res.elapsed_seconds || 0}s`;
+
+    // Stats
+    const meta   = res.metadata || {};
+    const cmds   = meta.total_commands || 0;
+    const chunks = meta.chunks_processed || 1;
+    const statsGrid = document.getElementById('statsGrid');
+    statsGrid.innerHTML = `
+      ${stat(res.total_steps || 0,        'Steps extracted',  'accent')}
+      ${stat(cmds,                         'CLI commands',     'accent')}
+      ${stat(chunks,                       'LLM chunks',       '')}
+      ${stat(res.elapsed_seconds || 0,     'Seconds',          '')}
+    `;
+
+    // TOON badge
+    const toon   = res.toon || {};
+    const toonEl = document.getElementById('toonBadge');
+    if (toon.used) {
+      toonEl.innerHTML = `
+        <div class="toon-badge">
+          <div class="toon-icon">⚡</div>
+          <div class="toon-text">
+            <div class="toon-title">TOON compression active — ${toon.compression_ratio} token reduction</div>
+            <div class="toon-sub">${fmt(toon.raw_tokens)} raw tokens → ${fmt(toon.toon_tokens)} TOON tokens sent to LLM</div>
+          </div>
+        </div>`;
+    } else {
+      toonEl.innerHTML = `
+        <div class="toon-badge off">
+          <div class="toon-icon">📝</div>
+          <div class="toon-text">
+            <div class="toon-title">TOON not used</div>
+            <div class="toon-sub">Raw document text was sent to the LLM (${fmt(toon.raw_tokens)} tokens)</div>
+          </div>
+        </div>`;
+    }
+
+    // Downloads
+    const downloads   = data.downloads || {};
+    const downloadGrid = document.getElementById('downloadGrid');
+    const dlConfig = [
+      { key: 'zephyr',    icon: '📋', name: 'Zephyr CSV',        type: 'CSV bulk import' },
+      { key: 'robot',     icon: '🤖', name: 'Robot Framework',   type: '.robot test file' },
+      { key: 'cli_rules', icon: '🔧', name: 'CLI Rules',         type: 'JSON validation rules' },
+      { key: 'canonical', icon: '📦', name: 'Canonical JSON',    type: 'Full structured data' },
+    ];
+    downloadGrid.innerHTML = dlConfig
+      .filter(d => downloads[d.key])
+      .map(d => `
+        <a class="dl-btn" href="${downloads[d.key]}" download>
+          <span class="dl-icon">${d.icon}</span>
+          <span class="dl-info">
+            <div class="dl-name">${d.name}</div>
+            <div class="dl-type">${d.type}</div>
+          </span>
+          <span class="dl-arrow">↓</span>
+        </a>
+      `).join('');
+
+    // Guardrails
+    const g = meta.guardrails;
+    const gBlock = document.getElementById('guardrailsBlock');
+    if (g) {
+      const tagClass = g.passed ? 'pass' : 'fail';
+      const tagText  = g.passed ? 'PASSED' : 'FAILED';
+      const items    = [...(g.warnings || []), ...(g.errors || [])];
+      gBlock.innerHTML = `
+        <div class="guardrails-block">
+          <div class="guardrails-header">
+            <span class="guardrails-title">Post-LLM Guardrails</span>
+            <span class="tag ${tagClass}">${tagText}</span>
+            <span class="tag" style="background:rgba(148,163,184,.1);color:var(--muted)">
+              Coverage ${(g.coverage_ratio * 100).toFixed(0)}%
+            </span>
+          </div>
+          <div class="guardrails-items">
+            ${items.length ? items.map(i => `<div class="gitem">${i}</div>`).join('') : '<div class="gitem">All checks passed</div>'}
+          </div>
+        </div>`;
+    } else {
+      gBlock.innerHTML = '';
+    }
+  }
+
+  function stat(value, label, cls) {
+    return `<div class="stat-card">
+      <div class="stat-value ${cls}">${value}</div>
+      <div class="stat-label">${label}</div>
+    </div>`;
+  }
+
+  // ── Panel switching ─────────────────────────────────────────────────────────
+  function showPanel(name) {
+    idleState.style.display       = name === 'idle'       ? 'flex' : 'none';
+    processingState.classList.toggle('show', name === 'processing');
+    resultState.classList.toggle('show',     name === 'result');
+    errorState.classList.toggle('show',      name === 'error');
+  }
+
+  // ── Elapsed timer ───────────────────────────────────────────────────────────
+  function startElapsed() {
+    startTime = Date.now();
+    stopElapsed();
+    elapsedTimer = setInterval(() => {
+      const s = ((Date.now() - startTime) / 1000).toFixed(0);
+      document.getElementById('procElapsed').textContent = `Elapsed: ${s}s`;
+    }, 1000);
+  }
+  function stopElapsed() {
+    if (elapsedTimer) { clearInterval(elapsedTimer); elapsedTimer = null; }
+  }
+
+  // ── Job history ─────────────────────────────────────────────────────────────
+  async function loadHistory() {
+    try {
+      const platKey = document.getElementById('inputPlatformKey').value.trim();
+      const headers = platKey ? { 'X-API-Key': platKey } : {};
+      const res = await fetch('/api/v1/jobs', { headers });
+      if (!res.ok) return;
+      const jobs = await res.json();
+      renderHistory(jobs);
+    } catch (_) {}
+  }
+
+  function renderHistory(jobs) {
+    if (!jobs.length) {
+      noHistory.style.display = 'block';
+      while (jobList.firstChild && jobList.firstChild !== noHistory) jobList.removeChild(jobList.firstChild);
+      return;
+    }
+    noHistory.style.display = 'none';
+    // Clear existing items (not noHistory)
+    [...jobList.querySelectorAll('.job-item')].forEach(el => el.remove());
+    jobs.slice(0, 8).forEach(j => {
+      const el = document.createElement('div');
+      el.className = 'job-item';
+      el.innerHTML = `
+        <div class="job-dot ${j.status}"></div>
+        <div class="job-info">
+          <div class="job-fname">${j.filename}</div>
+          <div class="job-meta">${j.status} · ${j.model.replace('claude-','')} · ${reltime(j.created_at)}</div>
+        </div>`;
+      el.addEventListener('click', () => loadJobResult(j.job_id));
+      jobList.prepend(el);
+    });
+  }
+
+  async function loadJobResult(jobId) {
+    const platKey = document.getElementById('inputPlatformKey').value.trim();
+    const headers = platKey ? { 'X-API-Key': platKey } : {};
+    const status = await fetch(`/api/v1/status/${jobId}`, { headers }).then(r => r.json()).catch(() => null);
+    if (!status) return;
+    if (status.status === 'done') {
+      currentJobId = jobId;
+      showPanel('processing');
+      document.getElementById('procFile').textContent = status.filename;
+      document.getElementById('procMessage').textContent = 'Loading result…';
+      const res = await fetch(`/api/v1/result/${jobId}`, { headers }).then(r => r.json()).catch(() => null);
+      if (res) showResult(res);
+    } else if (status.status === 'processing' || status.status === 'pending') {
+      currentJobId = jobId;
+      showPanel('processing');
+      document.getElementById('procFile').textContent = status.filename;
+      document.getElementById('procMessage').textContent = status.progress_message;
+      startElapsed();
+      startPolling(platKey);
+    } else if (status.status === 'failed') {
+      showPanel('error');
+      document.getElementById('errorMsg').textContent = status.error || 'Unknown error';
+    }
+  }
+
+  // ── Helpers ─────────────────────────────────────────────────────────────────
+  function formatBytes(b) {
+    if (b < 1024) return b + ' B';
+    if (b < 1024 * 1024) return (b / 1024).toFixed(1) + ' KB';
+    return (b / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+  function fmt(n) { return (n || 0).toLocaleString(); }
+  function reltime(iso) {
+    const diff = (Date.now() - new Date(iso)) / 1000;
+    if (diff < 60)    return Math.round(diff) + 's ago';
+    if (diff < 3600)  return Math.round(diff / 60) + 'm ago';
+    return Math.round(diff / 3600) + 'h ago';
+  }
+
+  // ── Init ────────────────────────────────────────────────────────────────────
+  showPanel('idle');
+  loadHistory();
+  setInterval(loadHistory, 10000); // refresh history every 10s
+</script>
+</body>
+</html>
