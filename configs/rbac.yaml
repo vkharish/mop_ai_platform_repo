@@ -1,0 +1,21 @@
+# RBAC — API key to role mapping.
+# If this file is absent or empty, the server runs in dev mode (all keys = admin).
+#
+# Roles: reader | executor | approver | admin
+
+api_keys:
+  # Replace example keys with real values. Use strong random keys in production.
+  # "ops-readonly-key-replace-me":
+  #   name: "noc-readonly"
+  #   role: "reader"
+  # "ops-executor-key-replace-me":
+  #   name: "ops-team"
+  #   role: "executor"
+  # "approver-key-replace-me":
+  #   name: "noc-lead"
+  #   role: "approver"
+  # "admin-key-replace-me":
+  #   name: "platform-admin"
+  #   role: "admin"
+
+approval_quorum: 1   # number of approvals needed for CRITICAL steps (min 1)

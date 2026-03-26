@@ -1608,3 +1608,324 @@ class TestUniversalVendorDetection:
         g = self._grammar()
         cmds = g.extract_from_text("set protocols bgp group EBGP neighbor 10.0.0.1")
         assert len(cmds) >= 1
+
+
+# ---------------------------------------------------------------------------
+# Palo Alto PAN-OS command detection
+# ---------------------------------------------------------------------------
+
+class TestPaloAltoVendorDetection:
+    """Grammar engine correctly identifies Palo Alto PAN-OS commands."""
+
+    def _grammar(self):
+        from grammar_engine.cli_grammar import CLIGrammar
+        return CLIGrammar()
+
+    def test_set_deviceconfig_command(self):
+        """PAN-OS 'set deviceconfig' commands are detected."""
+        g = self._grammar()
+        cmds = g.extract_from_text("set deviceconfig system hostname PA-5260-PROD")
+        assert len(cmds) >= 1
+
+    def test_set_security_policy_command(self):
+        """PAN-OS 'set security policy rules' commands are detected."""
+        g = self._grammar()
+        cmds = g.extract_from_text(
+            "set security policy rules SAAS-INTEGRATION from trust to untrust"
+        )
+        assert len(cmds) >= 1
+
+    def test_show_security_policy_command(self):
+        """PAN-OS 'show security policy-rule' commands are detected."""
+        g = self._grammar()
+        cmds = g.extract_from_text("show security policy-rule all")
+        assert len(cmds) >= 1
+
+    def test_commit_description_command(self):
+        """PAN-OS 'commit description' commands are detected."""
+        g = self._grammar()
+        cmds = g.extract_from_text('commit description "CHG-SEC-2024-0517 SaaS integration"')
+        assert len(cmds) >= 1
+
+    def test_delete_security_rule_command(self):
+        """PAN-OS 'delete security policy rules' commands are detected."""
+        g = self._grammar()
+        cmds = g.extract_from_text("delete security policy rules SAAS-INTEGRATION")
+        assert len(cmds) >= 1
+
+    def test_show_high_availability_state(self):
+        """PAN-OS HA state check command is detected."""
+        g = self._grammar()
+        cmds = g.extract_from_text("show high-availability state")
+        assert len(cmds) >= 1
+
+
+# ---------------------------------------------------------------------------
+# Ericsson IPOS command detection
+# ---------------------------------------------------------------------------
+
+class TestEricssonVendorDetection:
+    """Grammar engine correctly identifies Ericsson IPOS commands."""
+
+    def _grammar(self):
+        from grammar_engine.cli_grammar import CLIGrammar
+        return CLIGrammar()
+
+    def test_context_command(self):
+        """Ericsson 'context' commands are detected."""
+        g = self._grammar()
+        cmds = g.extract_from_text("context local")
+        assert len(cmds) >= 1
+
+    def test_show_version_command(self):
+        """Standard 'show version' works on Ericsson (generic pattern)."""
+        g = self._grammar()
+        cmds = g.extract_from_text("show version")
+        assert len(cmds) >= 1
+
+    def test_configure_command(self):
+        """Ericsson 'configure' mode entry is detected."""
+        g = self._grammar()
+        cmds = g.extract_from_text("configure")
+        assert len(cmds) >= 1
+
+
+# ---------------------------------------------------------------------------
+# Nokia SR OS command detection
+# ---------------------------------------------------------------------------
+
+class TestNokiaSROSVendorDetection:
+    """Grammar engine correctly identifies Nokia SR OS commands."""
+
+    def _grammar(self):
+        from grammar_engine.cli_grammar import CLIGrammar
+        return CLIGrammar()
+
+    def test_show_router_mpls_lsp(self):
+        """Nokia 'show router mpls lsp' command is detected."""
+        g = self._grammar()
+        cmds = g.extract_from_text("show router mpls lsp")
+        assert len(cmds) >= 1
+
+    def test_show_router_rsvp_status(self):
+        """Nokia 'show router rsvp status' command is detected."""
+        g = self._grammar()
+        cmds = g.extract_from_text("show router rsvp status")
+        assert len(cmds) >= 1
+
+    def test_show_service_id_base(self):
+        """Nokia 'show service id' command is detected."""
+        g = self._grammar()
+        cmds = g.extract_from_text("show service id 1001 base")
+        assert len(cmds) >= 1
+
+    def test_admin_command(self):
+        """Nokia 'admin' commands are detected (generic 'admin save')."""
+        g = self._grammar()
+        cmds = g.extract_from_text("admin save")
+        assert len(cmds) >= 1
+
+    def test_configure_command(self):
+        """Nokia 'configure' block entry is detected."""
+        g = self._grammar()
+        cmds = g.extract_from_text("configure")
+        assert len(cmds) >= 1
+
+
+# ---------------------------------------------------------------------------
+# Huawei VRP extended command detection
+# ---------------------------------------------------------------------------
+
+class TestHuaweiVRPExtendedDetection:
+    """Grammar engine correctly identifies additional Huawei VRP commands."""
+
+    def _grammar(self):
+        from grammar_engine.cli_grammar import CLIGrammar
+        return CLIGrammar()
+
+    def test_display_bgp_peer(self):
+        """Huawei 'display bgp peer' command is detected."""
+        g = self._grammar()
+        cmds = g.extract_from_text("display bgp peer")
+        assert len(cmds) >= 1
+
+    def test_display_isis_interface_verbose(self):
+        """Huawei 'display isis interface verbose' is detected."""
+        g = self._grammar()
+        cmds = g.extract_from_text("display isis interface verbose")
+        assert len(cmds) >= 1
+
+    def test_undo_isis_cost(self):
+        """Huawei 'undo isis cost' command is detected."""
+        g = self._grammar()
+        cmds = g.extract_from_text("undo isis cost level-2")
+        assert len(cmds) >= 1
+
+    def test_system_view_command(self):
+        """Huawei 'system-view' mode entry command is detected."""
+        g = self._grammar()
+        cmds = g.extract_from_text("system-view")
+        assert len(cmds) >= 1
+
+    def test_display_mpls_ldp_session(self):
+        """Huawei 'display mpls ldp session' is detected."""
+        g = self._grammar()
+        cmds = g.extract_from_text("display mpls ldp session")
+        assert len(cmds) >= 1
+
+    def test_isis_cost_command(self):
+        """Huawei 'isis cost' metric configuration is detected."""
+        g = self._grammar()
+        cmds = g.extract_from_text("isis cost 100 level-2")
+        assert len(cmds) >= 1
+
+
+# ---------------------------------------------------------------------------
+# Magic bytes format detection
+# ---------------------------------------------------------------------------
+
+class TestMagicBytesFormatDetection:
+    """document_loader detects format from file content, not extension."""
+
+    def test_txt_file_detected_by_content(self, tmp_path):
+        """Plain text file with no magic bytes → txt format."""
+        from ingestion.document_loader import _detect_format
+        f = tmp_path / "mop.log"  # wrong extension
+        f.write_text("# Pre-checks\n1. show version\n")
+        assert _detect_format(f) == "txt"
+
+    def test_pdf_magic_bytes_detected(self, tmp_path):
+        """File starting with %PDF → pdf format regardless of extension."""
+        from ingestion.document_loader import _detect_format
+        f = tmp_path / "mop.dat"  # wrong extension
+        f.write_bytes(b"%PDF-1.4 fake pdf content")
+        assert _detect_format(f) == "pdf"
+
+    def test_extension_fallback_for_plain_txt(self, tmp_path):
+        """File with .txt extension and no magic bytes → txt."""
+        from ingestion.document_loader import _detect_format
+        f = tmp_path / "mop.txt"
+        f.write_text("1. show ip bgp summary\n")
+        assert _detect_format(f) == "txt"
+
+    def test_unknown_extension_with_no_magic_bytes(self, tmp_path):
+        """Unrecognised extension with no matching magic bytes → unknown."""
+        from ingestion.document_loader import _detect_format
+        f = tmp_path / "mop.xyz"
+        f.write_bytes(b"\x00\x01\x02\x03 random bytes")
+        assert _detect_format(f) == "unknown"
+
+
+# ---------------------------------------------------------------------------
+# OCR fallback: is_scanned_pdf heuristic
+# ---------------------------------------------------------------------------
+
+class TestOCRFallbackHeuristic:
+    """is_scanned_pdf() returns correct result based on block density."""
+
+    def _make_doc(self, blocks, source_file="test.pdf"):
+        from models.canonical import ParsedDocument
+        return ParsedDocument(
+            title="Test",
+            source_file=source_file,
+            source_format="pdf",
+            blocks=blocks,
+            full_text="",
+        )
+
+    def test_empty_doc_is_scanned(self):
+        """Empty block list → considered scanned."""
+        from ingestion.ocr_fallback import is_scanned_pdf
+        doc = self._make_doc([])
+        assert is_scanned_pdf(doc, total_pages=5) is True
+
+    def test_dense_text_doc_not_scanned(self):
+        """Doc with plenty of text per page → not scanned."""
+        from ingestion.ocr_fallback import is_scanned_pdf
+        from models.canonical import DocumentBlock
+        blocks = [
+            DocumentBlock(
+                block_type="paragraph",
+                content="A" * 200,
+                metadata={"page": p},
+            )
+            for p in range(1, 6)
+        ]
+        doc = self._make_doc(blocks)
+        assert is_scanned_pdf(doc, total_pages=5) is False
+
+    def test_sparse_text_doc_is_scanned(self):
+        """Doc with almost no text (image-based) → considered scanned."""
+        from ingestion.ocr_fallback import is_scanned_pdf
+        from models.canonical import DocumentBlock
+        # Only 1 out of 20 pages has any text
+        blocks = [
+            DocumentBlock(
+                block_type="paragraph",
+                content="A" * 50,
+                metadata={"page": 1},
+            )
+        ]
+        doc = self._make_doc(blocks)
+        assert is_scanned_pdf(doc, total_pages=20) is True
+
+
+# ---------------------------------------------------------------------------
+# DOCX tracked-changes stripping
+# ---------------------------------------------------------------------------
+
+class TestDOCXTrackedChanges:
+    """_strip_tracked_changes removes w:del and unwraps w:ins elements."""
+
+    def _build_body_xml(self, xml_content: str):
+        """Build a minimal Word body element with the given XML snippet inside."""
+        from lxml import etree
+        W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+        body_xml = (
+            f'<w:body xmlns:w="{W}">'
+            f'{xml_content}'
+            f'</w:body>'
+        )
+        return etree.fromstring(body_xml)
+
+    def test_del_element_is_removed(self):
+        """w:del element is completely removed from the tree."""
+        from ingestion.docx_parser import _strip_tracked_changes
+        from lxml import etree
+        W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+        body = self._build_body_xml(
+            f'<w:p><w:del xmlns:w="{W}"><w:r><w:t>deleted text</w:t></w:r></w:del></w:p>'
+        )
+        _strip_tracked_changes(body)
+        del_tag = f"{{{W}}}del"
+        assert len(body.findall(f".//{del_tag}")) == 0
+
+    def test_ins_element_is_unwrapped(self):
+        """w:ins wrapper is removed but its w:r child is kept."""
+        from ingestion.docx_parser import _strip_tracked_changes
+        from lxml import etree
+        W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+        body = self._build_body_xml(
+            f'<w:p xmlns:w="{W}">'
+            f'  <w:ins xmlns:w="{W}"><w:r><w:t>inserted text</w:t></w:r></w:ins>'
+            f'</w:p>'
+        )
+        _strip_tracked_changes(body)
+        ins_tag = f"{{{W}}}ins"
+        r_tag = f"{{{W}}}r"
+        assert len(body.findall(f".//{ins_tag}")) == 0
+        assert len(body.findall(f".//{r_tag}")) >= 1
+
+    def test_clean_body_unchanged(self):
+        """Body with no tracked changes is not altered."""
+        from ingestion.docx_parser import _strip_tracked_changes
+        from lxml import etree
+        W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+        body = self._build_body_xml(
+            f'<w:p xmlns:w="{W}"><w:r><w:t>normal text</w:t></w:r></w:p>'
+        )
+        r_tag = f"{{{W}}}r"
+        before = len(body.findall(f".//{r_tag}"))
+        _strip_tracked_changes(body)
+        after = len(body.findall(f".//{r_tag}"))
+        assert before == after

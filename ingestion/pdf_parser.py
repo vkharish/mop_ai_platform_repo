@@ -14,16 +14,24 @@ The parser preserves:
 
 from __future__ import annotations
 
+import logging
 import re
 from pathlib import Path
 from typing import List
 
 from models.canonical import DocumentBlock, ParsedDocument
 
+logger = logging.getLogger(__name__)
+
 
 def parse(file_path: str) -> ParsedDocument:
     """
     Parse a PDF file into a ParsedDocument.
+
+    Extraction order:
+      1. pdfplumber (rich layout-aware extraction)
+      2. PyPDF2 (fallback if pdfplumber not installed)
+      3. OCR via pdf2image + pytesseract (if the PDF is scanned / image-based)
 
     Args:
         file_path: Path to the .pdf file.
@@ -32,37 +40,52 @@ def parse(file_path: str) -> ParsedDocument:
         ParsedDocument with typed DocumentBlocks.
     """
     try:
-        import pdfplumber
-        return _parse_with_pdfplumber(file_path)
+        import pdfplumber  # noqa: F401
+        doc, total_pages = _parse_with_pdfplumber(file_path)
     except ImportError:
         try:
             import PyPDF2  # noqa: F401
-            return _parse_with_pypdf2(file_path)
+            doc, total_pages = _parse_with_pypdf2(file_path)
         except ImportError:
             raise ImportError(
                 "No PDF library found. Install one of: "
                 "pdfplumber (recommended), PyPDF2"
             )
 
+    # OCR fallback for scanned PDFs (soft dependency — skipped if not installed)
+    from ingestion.ocr_fallback import is_scanned_pdf, ocr_pdf
+    if is_scanned_pdf(doc, total_pages=total_pages):
+        ocr_result = ocr_pdf(file_path)
+        if ocr_result is not None:
+            return ocr_result
+        logger.warning(
+            "OCR fallback unavailable for scanned PDF '%s' — "
+            "returning sparse text extraction",
+            file_path,
+        )
+
+    return doc
+
 
 # ---------------------------------------------------------------------------
 # pdfplumber implementation
 # ---------------------------------------------------------------------------
 
-def _parse_with_pdfplumber(file_path: str) -> ParsedDocument:
+def _parse_with_pdfplumber(file_path: str) -> tuple[ParsedDocument, int]:
     import pdfplumber
 
     path = Path(file_path)
     blocks: List[DocumentBlock] = []
+    total_pages = 0
 
     with pdfplumber.open(file_path) as pdf:
         title = _extract_title_from_filename(path.stem)
+        total_pages = len(pdf.pages)
 
         for page_num, page in enumerate(pdf.pages, start=1):
 
             # --- Extract tables first ---
             tables = page.extract_tables()
-            table_bboxes = [t.bbox for t in page.find_tables()] if tables else []
 
             for table_idx, table in enumerate(tables):
                 for row_idx, row in enumerate(table):
@@ -100,24 +123,27 @@ def _parse_with_pdfplumber(file_path: str) -> ParsedDocument:
                 ))
 
     full_text = _blocks_to_text(blocks)
-    return ParsedDocument(
+    doc = ParsedDocument(
         title=title,
         source_file=file_path,
         source_format="pdf",
         blocks=blocks,
         full_text=full_text,
     )
+    return doc, total_pages
 
 
-def _parse_with_pypdf2(file_path: str) -> ParsedDocument:
+def _parse_with_pypdf2(file_path: str) -> tuple[ParsedDocument, int]:
     import PyPDF2
 
     path = Path(file_path)
     title = _extract_title_from_filename(path.stem)
     blocks: List[DocumentBlock] = []
+    total_pages = 0
 
     with open(file_path, "rb") as f:
         reader = PyPDF2.PdfReader(f)
+        total_pages = len(reader.pages)
         for page_num, page in enumerate(reader.pages, start=1):
             text = page.extract_text() or ""
             for line in text.split("\n"):
@@ -135,13 +161,14 @@ def _parse_with_pypdf2(file_path: str) -> ParsedDocument:
                 ))
 
     full_text = _blocks_to_text(blocks)
-    return ParsedDocument(
+    doc = ParsedDocument(
         title=title,
         source_file=file_path,
         source_format="pdf",
         blocks=blocks,
         full_text=full_text,
     )
+    return doc, total_pages
 
 
 # ---------------------------------------------------------------------------

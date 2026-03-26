@@ -15,6 +15,7 @@ Usage:
     python pipeline.py --input mop.docx --output ./output --title "BGP Migration MOP"
     python pipeline.py --input mop.txt --output ./output --model claude-opus-4-6
     python pipeline.py --input mop.pdf --output ./output --skip-toon
+    python pipeline.py --input mop.pdf --output ./output --mock-llm   # no API key needed
 """
 
 from __future__ import annotations
@@ -42,6 +43,7 @@ def run(
     api_key: str | None = None,
     skip_guardrails: bool = False,
     skip_toon: bool = False,
+    mock_llm: bool = False,
 ) -> dict:
     """
     Run the full MOP → test artifacts pipeline.
@@ -54,6 +56,9 @@ def run(
         api_key:         Anthropic API key (falls back to ANTHROPIC_API_KEY env var).
         skip_guardrails: Skip post-LLM guardrail checks (not recommended).
         skip_toon:       Disable TOON compression (send raw text to LLM).
+        mock_llm:        Skip the real LLM call — build output from grammar-detected
+                         commands only.  No API key needed.  Useful for testing the
+                         full pipeline (guardrails, generators, output files) offline.
 
     Returns:
         Dict with paths to generated output files and pipeline metadata.
@@ -126,24 +131,35 @@ def run(
         and toon_doc.toon_usable
         and not skip_toon
     )
-    token_display = (
-        f"{toon_doc.estimated_toon_tokens:,} TOON tokens"
-        if toon_active
-        else f"~{est_tokens:,} raw tokens"
-    )
-    logger.info(
-        f"[3/6] Running LLM extraction (model={model}, "
-        f"{token_display}, "
-        f"{'TOON' if toon_active else ('chunked' if needs_chunking else 'single call')})"
-    )
 
-    from ai_layer.super_prompt_runner import SuperPromptRunner
-    runner = SuperPromptRunner(model=model, api_key=api_key, use_toon=not skip_toon)
-    llm_result = runner.run(
-        doc,
-        pre_detected_commands=pre_command_strings,
-        toon_doc=toon_doc,
-    )
+    if mock_llm:
+        logger.info("[3/6] MOCK LLM — building output from grammar-detected commands (no API call)")
+        from ai_layer.mock_llm_runner import run_mock
+        llm_result = run_mock(
+            doc_title=doc.title,
+            source_file=input_file,
+            source_format=doc.source_format,
+            mop_structure=doc.detected_structure,
+            detected_commands=pre_commands,
+        )
+    else:
+        token_display = (
+            f"{toon_doc.estimated_toon_tokens:,} TOON tokens"
+            if toon_active
+            else f"~{est_tokens:,} raw tokens"
+        )
+        logger.info(
+            f"[3/6] Running LLM extraction (model={model}, "
+            f"{token_display}, "
+            f"{'TOON' if toon_active else ('chunked' if needs_chunking else 'single call')})"
+        )
+        from ai_layer.super_prompt_runner import SuperPromptRunner
+        runner = SuperPromptRunner(model=model, api_key=api_key, use_toon=not skip_toon)
+        llm_result = runner.run(
+            doc,
+            pre_detected_commands=pre_command_strings,
+            toon_doc=toon_doc,
+        )
 
     if not llm_result.success:
         raise RuntimeError(
@@ -158,11 +174,12 @@ def run(
     partial_info = (
         f" (PARTIAL — some chunks failed)" if llm_result.partial_steps > 0 else ""
     )
+    mock_note = " [MOCK — no API call]" if mock_llm else ""
     logger.info(
         f"      Extracted {len(canonical_model.steps)} steps, "
         f"{sum(len(s.commands) for s in canonical_model.steps)} commands "
         f"in {llm_result.latency_ms / 1000:.1f}s"
-        f"{chunk_info}{partial_info}"
+        f"{chunk_info}{partial_info}{mock_note}"
     )
     if llm_result.partial_steps > 0:
         logger.warning(
@@ -281,6 +298,10 @@ Examples:
     parser.add_argument("--api-key", help="Anthropic API key (or set ANTHROPIC_API_KEY env var)")
     parser.add_argument("--skip-guardrails", action="store_true", help="Skip post-LLM guardrail checks")
     parser.add_argument("--skip-toon", action="store_true", help="Disable TOON compression (send raw text to LLM)")
+    parser.add_argument(
+        "--mock-llm", action="store_true",
+        help="Skip real LLM call — derive steps from grammar-detected commands (no API key needed)",
+    )
     return parser.parse_args()
 
 
@@ -295,6 +316,7 @@ if __name__ == "__main__":
             api_key=args.api_key,
             skip_guardrails=args.skip_guardrails,
             skip_toon=args.skip_toon,
+            mock_llm=args.mock_llm,
         )
     except Exception as e:
         logger.error(f"Pipeline failed: {e}")

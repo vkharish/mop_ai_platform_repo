@@ -1,0 +1,34 @@
+# MOP AI Platform — Execution Engine Defaults
+# All values can be overridden per-step in the canonical model.
+
+defaults:
+  retry_count:              3
+  retry_delay_s:            10.0
+  timeout_s:                30.0
+  on_failure:               abort
+
+limits:
+  max_concurrent_devices:   5
+  max_concurrent_steps_per_device: 1
+  max_steps_per_execution:  500
+  queue_starvation_timeout_s: 300
+
+connection:
+  idle_timeout_s:           600
+  connect_timeout_s:        30
+  max_per_device:           1
+
+state:
+  ttl_hours:                168   # 7 days
+  archive_dir:              output/executions/archive
+
+blast_radius:
+  auto_assign_threshold:
+    high_device_count:      3     # >3 devices in one step → HIGH
+    critical_keywords:      ["reload", "restart", "shutdown", "erase"]
+
+blocked_commands:
+  - "^write erase\\b"
+  - "^format\\s+"
+  - "^crypto key zeroize\\b"
+  - "^delete nvram:\\b"

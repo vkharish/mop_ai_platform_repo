@@ -7,6 +7,10 @@ Uses python-docx to preserve:
 - Tables
 - Normal paragraphs
 - Code blocks (detected by monospace style or code fence markers)
+
+Also strips Word tracked-changes markup before extraction:
+- w:del elements (deleted text) are removed entirely
+- w:ins elements (inserted text) are unwrapped — content kept, wrapper removed
 """
 
 from __future__ import annotations
@@ -20,10 +24,16 @@ from models.canonical import DocumentBlock, ParsedDocument
 # Reuse the text helpers from pdf_parser
 from ingestion.pdf_parser import _blocks_to_text
 
+# Word namespace
+_W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+
 
 def parse(file_path: str) -> ParsedDocument:
     """
     Parse a .docx file into a ParsedDocument.
+
+    Tracked changes are stripped before content extraction:
+    deleted text (w:del) is removed, inserted text (w:ins) is kept.
 
     Args:
         file_path: Path to the .docx file.
@@ -41,8 +51,11 @@ def parse(file_path: str) -> ParsedDocument:
 
     path = Path(file_path)
     document = docx.Document(file_path)
-    blocks: List[DocumentBlock] = []
 
+    # Strip tracked changes from the XML before processing
+    _strip_tracked_changes(document.element.body)
+
+    blocks: List[DocumentBlock] = []
     title = _extract_title(document) or _filename_to_title(path.stem)
 
     # --- Process document body ---
@@ -79,6 +92,57 @@ def parse(file_path: str) -> ParsedDocument:
         blocks=blocks,
         full_text=full_text,
     )
+
+
+# ---------------------------------------------------------------------------
+# Tracked-changes stripping
+# ---------------------------------------------------------------------------
+
+def _strip_tracked_changes(body_element) -> None:
+    """
+    Remove Word tracked-changes markup in-place from the document body element.
+
+    - w:del  → entire element removed (deleted text not shown)
+    - w:ins  → wrapper element removed, children promoted to parent (text kept)
+
+    This operates directly on the lxml element tree so subsequent docx parsing
+    sees a clean document with only the accepted/final content.
+    """
+    del_tag = f"{{{_W_NS}}}del"
+    ins_tag = f"{{{_W_NS}}}ins"
+
+    # Iterate over all descendants; collect actions first to avoid modifying
+    # the tree while iterating.
+    to_remove: list = []
+    to_unwrap: list = []
+
+    for elem in body_element.iter():
+        if elem.tag == del_tag:
+            to_remove.append(elem)
+        elif elem.tag == ins_tag:
+            to_unwrap.append(elem)
+
+    # Remove deleted nodes (skip if already removed by a parent removal)
+    removed: set = set()
+    for elem in to_remove:
+        parent = elem.getparent()
+        if parent is not None and id(elem) not in removed:
+            idx = list(parent).index(elem)
+            parent.remove(elem)
+            removed.add(id(elem))
+
+    # Unwrap inserted nodes: promote children, then remove the w:ins wrapper
+    for elem in to_unwrap:
+        parent = elem.getparent()
+        if parent is None or id(elem) in removed:
+            continue
+        idx = list(parent).index(elem)
+        # Move children before the w:ins element
+        for child in list(elem):
+            parent.insert(idx, child)
+            idx += 1
+        parent.remove(elem)
+        removed.add(id(elem))
 
 
 # ---------------------------------------------------------------------------

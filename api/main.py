@@ -27,6 +27,7 @@ from fastapi.staticfiles import StaticFiles
 
 from api.logging_config import configure_logging
 from api.routes import router
+from api.execution_routes import router as execution_router
 
 import logging
 logger = logging.getLogger("api.main")
@@ -123,6 +124,7 @@ app.add_middleware(
 # ── Routes ────────────────────────────────────────────────────────────────────
 
 app.include_router(router, prefix="/api/v1", tags=["MOP Processing"])
+app.include_router(execution_router)
 
 
 # ── Static files + UI ─────────────────────────────────────────────────────────
@@ -142,4 +144,5 @@ async def serve_ui():
 
 @app.get("/health", tags=["Health"])
 async def health():
-    return {"status": "ok", "version": "1.0.0"}
+    from execution_engine.kill_switch import kill_switch
+    return {"status": "ok", "version": "1.0.0", "kill_switch": kill_switch.is_set()}

@@ -39,6 +39,86 @@ class ActionType(str, Enum):
 
 
 # ---------------------------------------------------------------------------
+# Phase 2 Enums
+# ---------------------------------------------------------------------------
+
+class FailureStrategy(str, Enum):
+    ABORT          = "abort"
+    CONTINUE       = "continue"
+    ROLLBACK_GROUP = "rollback_group"
+    ROLLBACK_ALL   = "rollback_all"
+
+
+class ExecutionStatus(str, Enum):
+    PENDING            = "pending"
+    RUNNING            = "running"
+    PASSED             = "passed"
+    FAILED             = "failed"
+    SKIPPED            = "skipped"
+    ROLLING_BACK       = "rolling_back"
+    ROLLED_BACK        = "rolled_back"
+    AWAITING_APPROVAL  = "awaiting_approval"
+    ABORTED            = "aborted"
+    PAUSED             = "paused"
+
+
+class ApprovalStatus(str, Enum):
+    NOT_REQUIRED = "not_required"
+    PENDING      = "pending"
+    APPROVED     = "approved"
+    REJECTED     = "rejected"
+
+
+class BlastRadius(str, Enum):
+    LOW      = "low"
+    MEDIUM   = "medium"
+    HIGH     = "high"
+    CRITICAL = "critical"
+
+
+# ---------------------------------------------------------------------------
+# Phase 2 Sub-models
+# ---------------------------------------------------------------------------
+
+class ExecutionPolicy(BaseModel):
+    retry_count:   int   = 3
+    retry_delay_s: float = 10.0
+    timeout_s:     float = 30.0
+    on_failure:    FailureStrategy = FailureStrategy.ABORT
+
+
+class IdempotencyRule(BaseModel):
+    check_cmd:    str
+    skip_pattern: str
+    description:  str = ""
+
+
+class ValidationRule(BaseModel):
+    cmd:           str
+    expect_pattern: str
+    negate:        bool = False
+    description:   str = ""
+    wait_for:      bool = False
+    max_wait_s:    int  = 120
+
+
+class StepTiming(BaseModel):
+    delay_before_s: float = 0.0
+    delay_after_s:  float = 0.0
+
+
+class ITSMRef(BaseModel):
+    system:      str   # "servicenow" | "jira"
+    ticket_id:   str
+    webhook_url: str
+
+
+class DeviceRef(BaseModel):
+    hostname: str
+    role:     str = ""
+
+
+# ---------------------------------------------------------------------------
 # Sub-models
 # ---------------------------------------------------------------------------
 
@@ -97,6 +177,23 @@ class TestStep(BaseModel):
     tags: List[str] = []
     """Free-form tags added by grammar engine or LLM (e.g., 'bgp', 'cisco', 'critical')."""
 
+    # ------------------------------------------------------------------
+    # Phase 2 execution fields (all optional, all have defaults)
+    # ------------------------------------------------------------------
+    devices:           List[DeviceRef]         = Field(default_factory=list)
+    dependencies:      List[str]               = Field(default_factory=list)
+    execution_policy:  ExecutionPolicy         = Field(default_factory=ExecutionPolicy)
+    idempotency_rules: List[IdempotencyRule]   = Field(default_factory=list)
+    validation_rules:  List[ValidationRule]    = Field(default_factory=list)
+    timing:            StepTiming              = Field(default_factory=StepTiming)
+    approval_required: bool                    = False
+    blast_radius:      BlastRadius             = BlastRadius.LOW
+    transaction_group: Optional[str]           = None
+    actual_output:     Optional[str]           = None
+    execution_status:  ExecutionStatus         = ExecutionStatus.PENDING
+    executed_at:       Optional[str]           = None
+    savepoint:         bool                    = False
+
 
 # ---------------------------------------------------------------------------
 # Top-level model
@@ -129,6 +226,17 @@ class CanonicalTestModel(BaseModel):
     """
     Arbitrary metadata: vendor hints, processing timestamps, guardrail results, etc.
     """
+
+    # ------------------------------------------------------------------
+    # Phase 2 execution fields
+    # ------------------------------------------------------------------
+    change_ticket:     Optional[ITSMRef]    = None
+    failure_strategy:  FailureStrategy      = FailureStrategy.ABORT
+    maintenance_window: Optional[Dict[str, str]] = None
+    execution_id:      Optional[str]        = None
+    approval_required: bool                 = False
+    approved_by:       Optional[str]        = None
+    approved_at:       Optional[str]        = None
 
 
 # ---------------------------------------------------------------------------
@@ -177,3 +285,5 @@ class ParsedDocument:
     Best-guess structure detected by the normalizer.
     Used only as a hint in the LLM prompt.
     """
+
+    metadata: Dict[str, Any] = field(default_factory=dict)

@@ -1,0 +1,28 @@
+# Device inventory — maps hostnames to connection parameters.
+# Credentials are NOT stored here — use CredentialStore (Vault/env vars).
+#
+# Example entries:
+devices:
+  PE-CORE-01:
+    ip:            10.0.0.1
+    platform:      cisco_xr
+    driver:        netmiko
+    port:          22
+    max_connections: 1
+    oob_host:      ~      # OOB IP if available, else null
+
+  PE-CORE-02:
+    ip:            10.0.0.2
+    platform:      juniper_junos
+    driver:        netmiko
+    port:          22
+    max_connections: 1
+    oob_host:      ~
+
+  LEAF-SW-01:
+    ip:            10.0.1.1
+    platform:      arista_eos
+    driver:        netmiko
+    port:          22
+    max_connections: 2
+    oob_host:      ~

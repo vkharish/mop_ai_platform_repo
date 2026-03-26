@@ -25,6 +25,11 @@ vendors:
         mode: exec
       - pattern: "^copy\\s+"
         mode: exec
+      # IOS XR install operations
+      - pattern: "^install\\s+(add|activate|commit|deactivate|remove|rollback|verify|prepare)\\b"
+        mode: exec
+      - pattern: "^show\\s+install\\s+"
+        mode: exec
     config_commands:
       - pattern: "^configure\\s+terminal\\b"
         mode: config
@@ -94,7 +99,7 @@ vendors:
     config_commands:
       - pattern: "^configure\\s+"
         mode: config
-      - pattern: "^info\\b"
+      - pattern: "^info\\s+"
         mode: config
       - pattern: "^admin\\s+"
         mode: config
@@ -490,6 +495,8 @@ cli_prompt_patterns:
   # Generic prompt patterns
   - pattern: "^\\S+[>#]\\s*"
   - pattern: "^\\[\\S+\\]\\s*[>#]\\s*"
+  # Cisco IOS XR: RP/0/RSP0/CPU0:router# or RP/0/RSP0/CPU0:router(admin)#
+  - pattern: "^RP/\\d+/[\\w/]+:[\\w.-]+(?:\\([^)]*\\))?[>#]\\s*"
   # Cisco-style
   - pattern: "^PE\\d+[>#]\\s*"
   - pattern: "^CE\\d+[>#]\\s*"

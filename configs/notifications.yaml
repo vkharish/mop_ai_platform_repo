@@ -1,0 +1,27 @@
+# Notification backend configuration.
+# Actual secrets (tokens, passwords) come from environment variables.
+# Set enabled: false to disable a backend without removing its config.
+
+slack:
+  enabled:     false        # set true when SLACK_WEBHOOK_URL env var is set
+  events:
+    - execution_started
+    - step_failed_no_retry
+    - execution_passed
+    - execution_failed
+    - rollback_started
+    - kill_switch_engaged
+    - approval_required
+
+email:
+  enabled:     false        # set true when SMTP_HOST env var is set
+  events:
+    - execution_passed
+    - execution_failed
+    - approval_required
+
+pagerduty:
+  enabled:     false        # set true when PD_INTEGRATION_KEY env var is set
+  events:
+    - execution_failed      # only CRITICAL blast_radius failures trigger PagerDuty
+    - kill_switch_engaged
