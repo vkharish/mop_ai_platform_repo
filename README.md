@@ -14,6 +14,13 @@ Convert any procedural network document (MOP, SOP, runbook) into structured test
 - Pre/post diff comparison to show exactly what changed on the device
 - Notifications (Slack, Email, PagerDuty) and ITSM integration (ServiceNow, Jira)
 
+**Phase 3 — Standalone Protocol Test Agent**
+- Vendor-agnostic lab certification across BGP · IS-IS · MPLS · Interfaces · System
+- Hierarchical inventory: per-vendor/model templates + topology instances
+- Auto-discovers topology from a live seed device (LLDP/CDP) or plain English description
+- Two modes: Python agent (automated, cheap) + Claude Code skills (interactive, reasoning)
+- Pre/post baseline comparison with regression detection and change verdict
+
 **Supports:** PDF · DOCX · TXT · Markdown
 **Vendors:** Cisco IOS/IOS-XE/IOS-XR/NX-OS · Juniper Junos · Nokia SR OS · Arista EOS · F5 BIG-IP · Palo Alto · Check Point · Huawei VRP · Ericsson IPOS
 
@@ -215,22 +222,179 @@ All notification/ITSM integrations are **dry-run safe** — if credentials are a
 
 ---
 
+## Phase 3 — Standalone Protocol Test Agent
+
+A fully self-contained lab certification tool. Run protocol health tests against any vendor, any topology — without going through the full MOP pipeline.
+
+### Python Agent (automated, no interaction needed)
+
+```bash
+# BGP gating tests — mock SSH (no real devices)
+python standalone_tester/run_tests.py \
+  --topology hybrid/sample_mpls_lab.yaml \
+  --protocol bgp \
+  --test gating \
+  --mock-ssh --mock-llm
+
+# Full certification — all protocols, real devices
+export PE1_CREDS="admin:secret"
+export PE2_CREDS="admin:secret"
+python standalone_tester/run_tests.py \
+  --topology hybrid/sample_mpls_lab.yaml \
+  --protocol all \
+  --test certification
+
+# Filter to one device or vendor
+python standalone_tester/run_tests.py \
+  --topology hybrid/sample_mpls_lab.yaml \
+  --protocol isis --test smoke \
+  --device PE1 --mock-ssh --mock-llm
+
+# Save report for baseline comparison later
+python standalone_tester/run_tests.py \
+  --topology hybrid/sample_mpls_lab.yaml \
+  --protocol bgp --test gating \
+  --output standalone_tester/reports/pre_change_$(date +%Y%m%d_%H%M%S).json \
+  --mock-ssh --mock-llm
+```
+
+### Topology Discovery
+
+```bash
+# Generate topology from a live seed device (LLDP/CDP walk)
+python standalone_tester/discover.py --seed 192.168.1.1
+
+# Generate from plain English — no devices needed
+python standalone_tester/discover.py \
+  --describe "2 Cisco ASR9006 PEs running IOS-XR 7.5.1, 1 Nokia 7750 P router, connected via IS-IS and MPLS" \
+  --name my_lab
+
+# Generate sample topology for testing (no devices, no API key)
+python standalone_tester/discover.py --mock
+```
+
+Generated topology files land in `standalone_tester/inventory/generated/`.
+
+### Claude Code Skills (interactive, with full reasoning)
+
+These skills run **inside Claude Code** and reason about WHY tests fail, not just THAT they fail. They are 10-40x more expensive in tokens than the Python agent but provide root cause analysis and recommendations.
+
+```
+/protocol-test --device PE1 --protocol bgp --test gating --mock-ssh
+/protocol-test --topology hybrid/sample_mpls_lab.yaml --protocol all --test certification --mock-ssh
+
+/discover-topology --mock
+/discover-topology --seed 192.168.1.1
+/discover-topology --describe "2 Cisco PEs running IOS-XR, 1 Nokia P"
+
+/run-certification --topology hybrid/sample_mpls_lab.yaml --mock-ssh --mock-llm
+
+/compare-baseline \
+  --topology hybrid/sample_mpls_lab.yaml \
+  --baseline standalone_tester/reports/pre_change_20260120_143000.json \
+  --mock-ssh --mock-llm
+```
+
+Skills are available immediately in this repository. For global access on your machine:
+
+```bash
+# Copy skills to your Claude Code global config
+cp -r .claude/skills/* ~/.claude/skills/
+# Then restart Claude Code — skills appear in the /skills panel
+```
+
+### Inventory Structure
+
+```
+standalone_tester/
+├── inventory/
+│   ├── vendors/                    ← vendor/OS/model templates
+│   │   ├── cisco/
+│   │   │   ├── ios-xr/
+│   │   │   │   ├── _defaults.yaml  ← IOS-XR defaults (commands, quirks)
+│   │   │   │   ├── asr9000.yaml    ← ASR9000-specific capabilities
+│   │   │   │   └── ncs5500.yaml
+│   │   │   └── ios-xe/
+│   │   │       └── _defaults.yaml
+│   │   ├── juniper/junos/          ← mx-series.yaml + _defaults.yaml
+│   │   ├── nokia/sros/             ← 7750-sr.yaml + _defaults.yaml
+│   │   ├── arista/eos/
+│   │   ├── huawei/vrp/
+│   │   └── ericsson/ipos/
+│   ├── topologies/
+│   │   └── hybrid/
+│   │       └── sample_mpls_lab.yaml ← devices reference vendor templates via ref:
+│   └── generated/                  ← output of discover.py
+│
+├── test_catalog/
+│   └── catalog.yaml                ← vendor-agnostic test intents per protocol/type
+│
+├── agent/
+│   ├── inventory_manager.py        ← resolves ref: → merged vendor+model config
+│   ├── catalog_manager.py          ← loads test intents for protocol+test_type
+│   ├── command_translator.py       ← intent → vendor CLI (Haiku LLM + file cache)
+│   ├── protocol_test_agent.py      ← orchestrates device × test execution
+│   └── result_model.py             ← TestResult, DeviceTestReport, TestSuiteReport
+│
+├── discovery/
+│   ├── version_detector.py         ← regex-based OS/vendor detection from show version
+│   └── topology_discovery.py       ← LLDP/CDP live walk + LLM-from-description
+│
+├── cache/
+│   └── command_cache.json          ← translated commands cached by vendor+intent_id
+│
+├── reports/                        ← timestamped JSON test reports
+├── run_tests.py                    ← CLI entrypoint for Python agent
+└── discover.py                     ← CLI entrypoint for topology discovery
+```
+
+Topology files reference vendor templates with a `ref:` field:
+```yaml
+devices:
+  PE1:
+    ref: cisco/ios-xr/asr9000   # → loads _defaults.yaml + asr9000.yaml, deep-merged
+    version: "7.5.1"
+    role: pe-router
+    connection:
+      host: "192.168.100.1"
+    credentials_env: PE1_CREDS  # export PE1_CREDS="admin:secret"
+```
+
+### Test Catalog
+
+Tests are vendor-agnostic **intents** — the Python agent translates them to vendor CLI at runtime:
+
+| Protocol | Smoke | Gating | Certification |
+|----------|-------|--------|---------------|
+| BGP | neighbor state | session stability, prefixes, MED | full policy, communities, route reflection |
+| IS-IS | adjacency | LSP database, SPF | convergence, multi-level, redistribution |
+| MPLS | LDP/RSVP state | LSP end-to-end | TE, FRR, QoS, traffic stats |
+| Interface | up/down | errors, MTU | full QoS, sub-interfaces, CRC |
+| System | reachability | CPU/memory | NTP, logging, redundancy, filesystem |
+
+---
+
 ## Running Tests
 
 ```bash
-# All 191 tests — no API key required
+# All 223 tests — no API key required
 .venv/bin/python -m pytest tests/unit_tests/ -v
 
 # By group
-.venv/bin/python -m pytest tests/unit_tests/test_pipeline.py -v           # Phase 1 (121 tests)
-.venv/bin/python -m pytest tests/unit_tests/test_agents.py -v             # Execution agents (33 tests)
-.venv/bin/python -m pytest tests/unit_tests/test_phase2_integration.py -v # Phase 2 + enhancements (37 tests)
+.venv/bin/python -m pytest tests/unit_tests/test_pipeline.py -v              # Phase 1 (121 tests)
+.venv/bin/python -m pytest tests/unit_tests/test_agents.py -v                # Execution agents (33 tests)
+.venv/bin/python -m pytest tests/unit_tests/test_phase2_integration.py -v    # Phase 2 + enhancements (37 tests)
+.venv/bin/python -m pytest tests/unit_tests/test_standalone_tester.py -v     # Phase 3 standalone agent (32 tests)
 
 # By feature
-.venv/bin/python -m pytest -v -k "Quality"    # quality scorer
-.venv/bin/python -m pytest -v -k "Diff"       # pre/post diff engine
-.venv/bin/python -m pytest -v -k "DryRun"     # dry-run plan
-.venv/bin/python -m pytest -v -k "TOON"       # token compression
+.venv/bin/python -m pytest -v -k "Quality"       # quality scorer
+.venv/bin/python -m pytest -v -k "Diff"          # pre/post diff engine
+.venv/bin/python -m pytest -v -k "DryRun"        # dry-run plan
+.venv/bin/python -m pytest -v -k "TOON"          # token compression
+.venv/bin/python -m pytest -v -k "Inventory"     # inventory manager
+.venv/bin/python -m pytest -v -k "Catalog"       # test catalog
+.venv/bin/python -m pytest -v -k "Translator"    # command translator
+.venv/bin/python -m pytest -v -k "Discovery"     # topology discovery
 ```
 
 ---
@@ -335,11 +499,50 @@ mop_ai_platform_repo/
 │   ├── rbac.yaml                # User roles and permissions
 │   └── notifications.yaml       # Notification routing rules
 │
+├── standalone_tester/               # Phase 3 — standalone protocol test agent
+│   ├── run_tests.py                 #   CLI: python run_tests.py --topology ... --protocol bgp
+│   ├── discover.py                  #   CLI: python discover.py --seed <ip> | --describe "..." | --mock
+│   ├── inventory/
+│   │   ├── vendors/                 #   Per-vendor/OS/model YAML templates
+│   │   │   ├── cisco/ios-xr/        #   _defaults.yaml + asr9000.yaml + ncs5500.yaml
+│   │   │   ├── cisco/ios-xe/        #   _defaults.yaml
+│   │   │   ├── juniper/junos/       #   _defaults.yaml + mx-series.yaml
+│   │   │   ├── nokia/sros/          #   _defaults.yaml + 7750-sr.yaml
+│   │   │   ├── arista/eos/          #   _defaults.yaml
+│   │   │   ├── huawei/vrp/          #   _defaults.yaml
+│   │   │   └── ericsson/ipos/       #   _defaults.yaml
+│   │   ├── topologies/
+│   │   │   └── hybrid/
+│   │   │       └── sample_mpls_lab.yaml  # 4-device mixed-vendor topology
+│   │   └── generated/               #   Output of discover.py
+│   ├── test_catalog/
+│   │   └── catalog.yaml             #   Vendor-agnostic test intents (5 protocols × 3 types)
+│   ├── agent/
+│   │   ├── inventory_manager.py     #   Resolves ref: → merged vendor+model config
+│   │   ├── catalog_manager.py       #   Loads test intents for protocol+test_type
+│   │   ├── command_translator.py    #   Intent → vendor CLI (Haiku LLM + file cache)
+│   │   ├── protocol_test_agent.py   #   Orchestrates device × test execution
+│   │   └── result_model.py          #   TestResult, DeviceTestReport, TestSuiteReport
+│   ├── discovery/
+│   │   ├── version_detector.py      #   Regex OS/vendor detection from show version
+│   │   └── topology_discovery.py    #   LLDP/CDP live walk + LLM-from-description
+│   ├── cache/
+│   │   └── command_cache.json       #   Cached vendor CLI translations
+│   └── reports/                     #   Timestamped JSON test reports
+│
+├── .claude/
+│   └── skills/                      # Claude Code interactive skills
+│       ├── protocol-test/SKILL.md   #   /protocol-test — investigate WHY tests fail
+│       ├── discover-topology/SKILL.md #  /discover-topology — live or LLM topology gen
+│       ├── run-certification/SKILL.md # /run-certification — full cert suite + verdict
+│       └── compare-baseline/SKILL.md  # /compare-baseline — regression detection
+│
 ├── tests/
 │   └── unit_tests/
-│       ├── test_pipeline.py          # 121 Phase 1 tests
-│       ├── test_agents.py            # 33 execution agent tests
-│       └── test_phase2_integration.py # 37 Phase 2 + enhancement tests
+│       ├── test_pipeline.py              # 121 Phase 1 tests
+│       ├── test_agents.py                # 33 execution agent tests
+│       ├── test_phase2_integration.py    # 37 Phase 2 + enhancement tests
+│       └── test_standalone_tester.py     # 32 Phase 3 standalone agent tests
 │
 ├── MOP_AI_PLATFORM_DESIGN_v4.md # Complete architecture design document
 ├── .env.example

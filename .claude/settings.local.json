@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(pip install fastapi \"uvicorn[standard]\" python-multipart -q 2>&1 | tail -5)",
-      "Bash(pip3 install fastapi \"uvicorn[standard]\" python-multipart -q 2>&1 | tail -5)",
-      "Bash(python3 -c \"\nfrom api.main import app\nfrom api.routes import router\nfrom api.job_store import create_job, get_job, update_job, list_jobs\nfrom api.auth import verify_api_key\nprint\\('All imports OK'\\)\nprint\\('Routes:', [r.path for r in app.routes if hasattr\\(r, 'path'\\)]\\)\n\")"
-    ]
-  }
-}
