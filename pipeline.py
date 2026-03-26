@@ -23,6 +23,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import re
 import sys
 import time
 from pathlib import Path
@@ -44,6 +45,7 @@ def run(
     skip_guardrails: bool = False,
     skip_toon: bool = False,
     mock_llm: bool = False,
+    dry_run: bool = False,
 ) -> dict:
     """
     Run the full MOP → test artifacts pipeline.
@@ -59,6 +61,9 @@ def run(
         mock_llm:        Skip the real LLM call — build output from grammar-detected
                          commands only.  No API key needed.  Useful for testing the
                          full pipeline (guardrails, generators, output files) offline.
+        dry_run:         Print a full execution plan (what commands would run, in what
+                         order, on which devices) without actually executing anything.
+                         Also scores MOP quality and saves a _dryrun.txt file.
 
     Returns:
         Dict with paths to generated output files and pipeline metadata.
@@ -240,6 +245,30 @@ def run(
     with open(canonical_json_path, "w", encoding="utf-8") as f:
         f.write(SchemaValidator.to_json(canonical_model))
 
+    # ------------------------------------------------------------------
+    # 6b. Quality Score
+    # ------------------------------------------------------------------
+    from quality.quality_scorer import QualityScorer
+    quality = QualityScorer.score(canonical_model)
+    logger.info(f"      {quality.summary_line()}")
+    QualityScorer.print_report(quality)
+    canonical_model.metadata["quality_score"] = {
+        "score": quality.score,
+        "max_score": quality.max_score,
+        "band": quality.band,
+        "percentage": quality.percentage,
+        "breakdown": quality.breakdown,
+        "warnings": quality.warnings,
+        "recommendations": quality.recommendations,
+    }
+
+    # ------------------------------------------------------------------
+    # 6c. Dry-run execution plan
+    # ------------------------------------------------------------------
+    dryrun_path = None
+    if dry_run:
+        dryrun_path = _print_dry_run_plan(canonical_model, output_dir, quality)
+
     elapsed = time.time() - start
     logger.info(f"Done in {elapsed:.1f}s")
 
@@ -249,6 +278,12 @@ def run(
         "source_format": canonical_model.source_format,
         "mop_structure": canonical_model.mop_structure,
         "total_steps": len(canonical_model.steps),
+        "quality": {
+            "score": quality.score,
+            "max_score": quality.max_score,
+            "band": quality.band,
+            "percentage": quality.percentage,
+        },
         "toon": {
             "used": toon_active,
             "compression_ratio": (
@@ -262,6 +297,7 @@ def run(
             "robot_framework": robot_path,
             "cli_rules": cli_rules_path,
             "canonical_json": str(canonical_json_path),
+            **({"dry_run_plan": dryrun_path} if dryrun_path else {}),
         },
         "metadata": canonical_model.metadata,
         "elapsed_seconds": round(elapsed, 2),
@@ -269,6 +305,80 @@ def run(
 
     print(json.dumps(result, indent=2))
     return result
+
+
+def _print_dry_run_plan(canonical_model, output_dir: str, quality) -> str:
+    """Print and save a full dry-run execution plan."""
+    from models.canonical import ActionType
+
+    steps = canonical_model.steps
+    non_rollback = [s for s in steps if not s.is_rollback]
+    rollback_steps = [s for s in steps if s.is_rollback]
+
+    # Group by section for display
+    sections: dict = {}
+    for s in non_rollback:
+        sec = s.section or "General"
+        sections.setdefault(sec, []).append(s)
+
+    lines = [
+        "",
+        "=" * 70,
+        f"  DRY RUN — EXECUTION PLAN",
+        f"  Document : {canonical_model.document_title}",
+        f"  Format   : {canonical_model.source_format.upper()}  |  Structure: {canonical_model.mop_structure}",
+        f"  Strategy : {(canonical_model.failure_strategy or 'abort').value if hasattr(canonical_model.failure_strategy, 'value') else canonical_model.failure_strategy}",
+        f"  Quality  : {quality.band} ({quality.score}/{quality.max_score})",
+        f"  Steps    : {len(non_rollback)} execution  +  {len(rollback_steps)} rollback",
+        "=" * 70,
+    ]
+
+    step_num = 0
+    for section, sec_steps in sections.items():
+        lines.append(f"\n  ── {section} ({'%d step%s' % (len(sec_steps), 's' if len(sec_steps) != 1 else '')}) ──")
+        for step in sec_steps:
+            step_num += 1
+            action = step.action_type.value.upper() if hasattr(step.action_type, 'value') else str(step.action_type)
+            devices = ", ".join(d.hostname for d in step.devices) if step.devices else "— (no device specified)"
+            lines.append(f"\n  [{step_num:>3}] {step.description[:65]}")
+            lines.append(f"        Section  : {section}")
+            lines.append(f"        Action   : {action}")
+            lines.append(f"        Devices  : {devices}")
+            for i, cmd in enumerate(step.commands, 1):
+                vendor = f"[{cmd.vendor}]" if cmd.vendor and cmd.vendor != "generic" else ""
+                mode = f"({cmd.mode})" if cmd.mode else ""
+                lines.append(f"        CMD {i:>2}   : {cmd.raw[:60]}  {vendor}{mode}")
+            if step.expected_output:
+                lines.append(f"        Expect   : {step.expected_output[:60]}")
+            else:
+                lines.append(f"        Expect   : (error-pattern check only)")
+            if step.approval_required:
+                lines.append(f"        ⚠ APPROVAL REQUIRED before this step")
+
+    if rollback_steps:
+        lines.append(f"\n  ── Rollback Procedure (runs in REVERSE on failure) ──")
+        for step in reversed(rollback_steps):
+            for cmd in step.commands:
+                lines.append(f"    ↩  {cmd.raw[:65]}")
+
+    lines += [
+        "",
+        "  NOTE: This is a dry run — NO commands have been sent to any device.",
+        "        Review the plan above before executing.",
+        "=" * 70,
+        "",
+    ]
+
+    plan_text = "\n".join(lines)
+    print(plan_text)
+
+    # Save to file
+    safe = re.sub(r"[^\w\-]", "_", canonical_model.document_title).strip("_")
+    out_path = str(Path(output_dir) / f"{safe}_dryrun.txt")
+    with open(out_path, "w", encoding="utf-8") as f:
+        f.write(plan_text)
+    logger.info(f"      Dry-run plan saved → {out_path}")
+    return out_path
 
 
 def _safe_filename(name: str) -> str:
@@ -302,6 +412,10 @@ Examples:
         "--mock-llm", action="store_true",
         help="Skip real LLM call — derive steps from grammar-detected commands (no API key needed)",
     )
+    parser.add_argument(
+        "--dry-run", action="store_true",
+        help="Print full execution plan (steps, commands, devices) without touching any device",
+    )
     return parser.parse_args()
 
 
@@ -317,6 +431,7 @@ if __name__ == "__main__":
             skip_guardrails=args.skip_guardrails,
             skip_toon=args.skip_toon,
             mock_llm=args.mock_llm,
+            dry_run=args.dry_run,
         )
     except Exception as e:
         logger.error(f"Pipeline failed: {e}")

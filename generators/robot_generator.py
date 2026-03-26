@@ -179,6 +179,7 @@ class RobotGenerator:
 
         is_verify = step.action_type in (ActionType.VERIFY, ActionType.OBSERVE)
         is_precheck = (step.section or "").lower() == "pre-checks"
+        is_postcheck = (step.section or "").lower() in ("verification", "post-checks")
 
         for cmd in step.commands:
             var_name = cls._var_name_from_cmd(cmd.raw)
@@ -212,6 +213,17 @@ class RobotGenerator:
                     f"{_escape_rf(step.expected_output)}"
                 )
 
+            # Pre/Post diff: compare post-check output against pre-check baseline
+            # Only when a matching baseline variable was captured
+            if is_postcheck:
+                baseline_var = f"${{BASELINE_{var_name.upper()}}}"
+                lines.append(
+                    f"{_INDENT}Compare With Baseline"
+                    f"    {baseline_var}"
+                    f"    {output_var}"
+                    f"    {_escape_rf(cmd.raw[:50])}"
+                )
+
             # Check for device error indicators on ALL steps (config + implementation)
             # Skip for pre-checks (show commands — some expected output patterns look like errors)
             if not is_verify and not is_precheck:
@@ -237,6 +249,7 @@ class RobotGenerator:
             cls._kw_execute_cli(),
             cls._kw_verify_output(),
             cls._kw_verify_no_device_error(),
+            cls._kw_compare_with_baseline(),
             cls._kw_log_step_failure(),
         ]
 
@@ -285,6 +298,26 @@ class RobotGenerator:
             Should Not Match Regexp    ${output}
             ...    (?i)(^\\s*%|\\berror\\b|\\binvalid\\b|\\bfailed\\b|\\btimed?\\s*out\\b|permission denied|syntax error|not permitted)
             ...    msg=DEVICE ERROR DETECTED in output — aborting upgrade""")
+
+    @classmethod
+    def _kw_compare_with_baseline(cls) -> str:
+        return textwrap.dedent("""\
+        Compare With Baseline
+            [Documentation]    Compare post-change output against the pre-check baseline.
+            ...                Logs a diff so engineers can see exactly what changed.
+            ...                Non-fatal: differences are logged as warnings, not failures,
+            ...                because some changes (e.g. new BGP prefix) are expected.
+            [Arguments]        ${baseline}    ${current}    ${label}=output
+            ${baseline_lines}=    Split To Lines    ${baseline}
+            ${current_lines}=     Split To Lines    ${current}
+            ${baseline_len}=      Get Length    ${baseline_lines}
+            ${current_len}=       Get Length    ${current_lines}
+            Run Keyword If    '${baseline}' == '${EMPTY}'
+            ...    Log    PRE/POST DIFF [${label}]: No baseline captured — skipping diff    WARN
+            ...    ELSE IF    '${baseline}' == '${current}'
+            ...    Log    PRE/POST DIFF [${label}]: Output UNCHANGED (${current_len} lines)    INFO
+            ...    ELSE
+            ...    Log    PRE/POST DIFF [${label}]: Output CHANGED — baseline ${baseline_len} lines → current ${current_len} lines    WARN""")
 
     @classmethod
     def _kw_log_step_failure(cls) -> str:

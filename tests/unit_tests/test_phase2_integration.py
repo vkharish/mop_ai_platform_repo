@@ -303,3 +303,230 @@ class TestDecisionLog:
             with mock.patch("pathlib.Path.mkdir"):
                 agent._write_decision_record(step, "RETRY", "within retry limit", "", 1.0, "exec-1")
         mock_file.assert_called()
+
+
+# ---------------------------------------------------------------------------
+# Quality Scorer
+# ---------------------------------------------------------------------------
+
+class TestQualityScorer:
+
+    def _full_model(self):
+        """Model with pre-checks, implementation, verification, rollback."""
+        from models.canonical import FailureStrategy
+        steps = [
+            TestStep(step_id="p1", sequence=1, step_type=StepType.VERIFICATION,
+                     action_type=ActionType.VERIFY, description="Pre-check BGP",
+                     raw_text="show bgp sum", section="Pre-checks",
+                     commands=[CLICommand(raw="show bgp summary", confidence=0.95)],
+                     expected_output="BGP neighbors established"),
+            TestStep(step_id="i1", sequence=2, step_type=StepType.ACTION,
+                     action_type=ActionType.CONFIGURE, description="Apply config",
+                     raw_text="router bgp 65000", section="Implementation",
+                     commands=[CLICommand(raw="router bgp 65000", confidence=0.9)]),
+            TestStep(step_id="i2", sequence=3, step_type=StepType.ACTION,
+                     action_type=ActionType.CONFIGURE, description="Apply neighbor",
+                     raw_text="neighbor 10.0.0.1", section="Implementation",
+                     commands=[CLICommand(raw="neighbor 10.0.0.1 remote-as 65001", confidence=0.9)]),
+            TestStep(step_id="v1", sequence=4, step_type=StepType.VERIFICATION,
+                     action_type=ActionType.VERIFY, description="Verify BGP",
+                     raw_text="show bgp sum", section="Verification",
+                     commands=[CLICommand(raw="show bgp summary", confidence=0.95)],
+                     expected_output="BGP neighbors established"),
+            TestStep(step_id="r1", sequence=5, step_type=StepType.ROLLBACK,
+                     action_type=ActionType.ROLLBACK, description="Rollback",
+                     raw_text="no router bgp", section="Rollback",
+                     is_rollback=True,
+                     commands=[CLICommand(raw="no router bgp 65000", confidence=0.9)]),
+        ]
+        return CanonicalTestModel(
+            document_title="Test MOP", source_file="test.pdf",
+            source_format="pdf", mop_structure="prose",
+            steps=steps, failure_strategy=FailureStrategy.ROLLBACK_ALL,
+        )
+
+    def test_high_score_full_model(self):
+        from quality.quality_scorer import QualityScorer
+        qs = QualityScorer.score(self._full_model())
+        assert qs.band == "HIGH"
+        assert qs.score >= 8
+
+    def test_low_score_empty_model(self):
+        from quality.quality_scorer import QualityScorer
+        model = CanonicalTestModel(
+            document_title="Empty MOP", source_file="e.pdf",
+            source_format="pdf", mop_structure="unknown",
+            steps=[TestStep(step_id="x1", sequence=1, step_type=StepType.INFO,
+                            action_type=ActionType.OBSERVE, description="No ops",
+                            raw_text="")],
+        )
+        qs = QualityScorer.score(model)
+        assert qs.band == "LOW"
+        assert qs.score < 4
+
+    def test_medium_score_no_rollback(self):
+        from quality.quality_scorer import QualityScorer
+        model = self._full_model()
+        model.steps = [s for s in model.steps if not s.is_rollback]
+        qs = QualityScorer.score(model)
+        # Loses 2 rollback points and 1 failure strategy point
+        assert qs.band in ("MEDIUM", "HIGH")
+        assert "rollback" in " ".join(qs.warnings + qs.recommendations).lower()
+
+    def test_breakdown_keys_present(self):
+        from quality.quality_scorer import QualityScorer
+        qs = QualityScorer.score(self._full_model())
+        for key in ("commands_detected", "rollback_steps", "pre_checks",
+                    "verification_section", "expected_output_coverage",
+                    "command_confidence", "section_diversity", "failure_strategy"):
+            assert key in qs.breakdown
+
+    def test_summary_line_format(self):
+        from quality.quality_scorer import QualityScorer
+        qs = QualityScorer.score(self._full_model())
+        line = qs.summary_line()
+        assert "Quality:" in line
+        assert qs.band in line
+
+    def test_percentage_calculation(self):
+        from quality.quality_scorer import QualityScorer
+        qs = QualityScorer.score(self._full_model())
+        assert 0 <= qs.percentage <= 100
+        assert qs.percentage == round(qs.score / qs.max_score * 100)
+
+
+# ---------------------------------------------------------------------------
+# Diff Engine
+# ---------------------------------------------------------------------------
+
+class TestDiffEngine:
+
+    def test_identical_outputs_no_change(self):
+        from reporting.diff_engine import DiffEngine
+        result = DiffEngine.diff_text("show bgp\nEstablished", "show bgp\nEstablished", label="bgp")
+        assert result.is_identical
+        assert not result.changed
+        assert result.added_lines == []
+        assert result.removed_lines == []
+
+    def test_added_line_detected(self):
+        from reporting.diff_engine import DiffEngine
+        result = DiffEngine.diff_text(
+            "Neighbor  State\n10.0.0.1  Established",
+            "Neighbor  State\n10.0.0.1  Established\n10.0.0.2  Established",
+            label="bgp neighbors",
+        )
+        assert result.changed
+        assert any("10.0.0.2" in l for l in result.added_lines)
+
+    def test_removed_line_detected(self):
+        from reporting.diff_engine import DiffEngine
+        result = DiffEngine.diff_text(
+            "Neighbor  State\n10.0.0.1  Established\n10.0.0.2  Idle",
+            "Neighbor  State\n10.0.0.1  Established",
+            label="bgp neighbors",
+        )
+        assert result.changed
+        assert any("10.0.0.2" in l for l in result.removed_lines)
+
+    def test_timestamp_stripping(self):
+        from reporting.diff_engine import DiffEngine
+        baseline = "BGP uptime: 01:23:45\nEstablished"
+        current  = "BGP uptime: 02:00:00\nEstablished"
+        result = DiffEngine.diff_text(baseline, current, ignore_timestamps=True)
+        assert result.is_identical  # timestamps stripped, rest identical
+
+    def test_summary_no_change(self):
+        from reporting.diff_engine import DiffEngine
+        result = DiffEngine.diff_text("same", "same", label="cmd")
+        assert "NO CHANGE" in result.summary()
+
+    def test_summary_changed(self):
+        from reporting.diff_engine import DiffEngine
+        result = DiffEngine.diff_text("old line", "new line", label="cmd")
+        assert "CHANGED" in result.summary()
+
+    def test_step_diff_added(self):
+        from reporting.diff_engine import DiffEngine
+        m1 = CanonicalTestModel(
+            document_title="T", source_file="f", source_format="pdf",
+            mop_structure="prose",
+            steps=[TestStep(step_id="s1", sequence=1, step_type=StepType.ACTION,
+                            action_type=ActionType.EXECUTE, description="old",
+                            raw_text="cmd", commands=[CLICommand(raw="show version")])],
+        )
+        m2 = CanonicalTestModel(
+            document_title="T", source_file="f", source_format="pdf",
+            mop_structure="prose",
+            steps=[
+                TestStep(step_id="s1", sequence=1, step_type=StepType.ACTION,
+                         action_type=ActionType.EXECUTE, description="old",
+                         raw_text="cmd", commands=[CLICommand(raw="show version")]),
+                TestStep(step_id="s2", sequence=2, step_type=StepType.ACTION,
+                         action_type=ActionType.EXECUTE, description="new step",
+                         raw_text="cmd2", commands=[CLICommand(raw="show bgp")]),
+            ],
+        )
+        diff = DiffEngine.diff_steps(m1, m2)
+        assert diff.has_changes
+        assert len(diff.added_steps) == 1
+
+    def test_comparison_report_format(self):
+        from reporting.diff_engine import DiffEngine
+        results = [
+            ("show bgp", DiffEngine.diff_text("Established", "Established")),
+            ("show ospf", DiffEngine.diff_text("FULL", "DOWN")),
+        ]
+        report = DiffEngine.build_comparison_report(results)
+        assert "PRE / POST" in report
+        assert "unchanged" in report.lower()
+        assert "CHANGED" in report
+
+
+# ---------------------------------------------------------------------------
+# Dry Run Plan (pipeline integration)
+# ---------------------------------------------------------------------------
+
+class TestDryRunPlan:
+
+    def test_dry_run_creates_file(self, tmp_path):
+        from quality.quality_scorer import QualityScorer
+        import pipeline as pl
+        model = CanonicalTestModel(
+            document_title="Test MOP", source_file="test.pdf",
+            source_format="pdf", mop_structure="prose",
+            steps=[TestStep(step_id="s1", sequence=1, step_type=StepType.ACTION,
+                            action_type=ActionType.EXECUTE, description="Run BGP check",
+                            raw_text="show bgp", section="Implementation",
+                            commands=[CLICommand(raw="show bgp summary")])],
+        )
+        qs = QualityScorer.score(model)
+        out_path = pl._print_dry_run_plan(model, str(tmp_path), qs)
+        assert out_path.endswith("_dryrun.txt")
+        content = open(out_path).read()
+        assert "DRY RUN" in content
+        assert "show bgp summary" in content
+        assert "Test MOP" in content
+
+    def test_dry_run_includes_rollback(self, tmp_path):
+        from quality.quality_scorer import QualityScorer
+        import pipeline as pl
+        model = CanonicalTestModel(
+            document_title="Rollback MOP", source_file="r.pdf",
+            source_format="pdf", mop_structure="prose",
+            steps=[
+                TestStep(step_id="s1", sequence=1, step_type=StepType.ACTION,
+                         action_type=ActionType.EXECUTE, description="Apply",
+                         raw_text="cmd", section="Implementation",
+                         commands=[CLICommand(raw="router bgp 100")]),
+                TestStep(step_id="r1", sequence=2, step_type=StepType.ROLLBACK,
+                         action_type=ActionType.ROLLBACK, description="Undo",
+                         raw_text="no cmd", section="Rollback", is_rollback=True,
+                         commands=[CLICommand(raw="no router bgp 100")]),
+            ],
+        )
+        qs = QualityScorer.score(model)
+        out_path = pl._print_dry_run_plan(model, str(tmp_path), qs)
+        content = open(out_path).read()
+        assert "Rollback Procedure" in content
+        assert "no router bgp 100" in content
