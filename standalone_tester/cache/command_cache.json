@@ -1,0 +1,72 @@
+{
+  "cisco|ios-xr|bgp_neighbors_up": {
+    "command": "show bgp ipv4 unicast summary",
+    "success_pattern": "Established|Establ",
+    "error_pattern": "Idle|Active|Connect"
+  },
+  "juniper|junos|bgp_neighbors_up": {
+    "command": "show bgp summary",
+    "success_pattern": "Established|Establ",
+    "error_pattern": "Idle|Active|Connect"
+  },
+  "nokia|sros|bgp_neighbors_up": {
+    "command": "show router bgp summary",
+    "success_pattern": "Established|Establ",
+    "error_pattern": "Idle|Active|Connect"
+  },
+  "cisco|ios-xr|isis_adjacencies_up": {
+    "command": "show isis neighbors",
+    "success_pattern": "Up|UP",
+    "error_pattern": "Down|Init|None"
+  },
+  "cisco|ios-xr|bgp_prefix_count": {
+    "command": "show version",
+    "success_pattern": "Version|version",
+    "error_pattern": "Error|error"
+  },
+  "cisco|ios-xr|bgp_rr_sessions": {
+    "command": "show version",
+    "success_pattern": "Version|version",
+    "error_pattern": "Error|error"
+  },
+  "cisco|ios-xr|bgp_process_running": {
+    "command": "show version",
+    "success_pattern": "Version|version",
+    "error_pattern": "Error|error"
+  },
+  "nokia|sros|bgp_prefix_count": {
+    "command": "show version",
+    "success_pattern": "Version|version",
+    "error_pattern": "Error|error"
+  },
+  "nokia|sros|bgp_rr_sessions": {
+    "command": "show version",
+    "success_pattern": "Version|version",
+    "error_pattern": "Error|error"
+  },
+  "nokia|sros|bgp_process_running": {
+    "command": "show version",
+    "success_pattern": "Version|version",
+    "error_pattern": "Error|error"
+  },
+  "juniper|junos|bgp_prefix_count": {
+    "command": "show version",
+    "success_pattern": "Version|version",
+    "error_pattern": "Error|error"
+  },
+  "juniper|junos|bgp_rr_sessions": {
+    "command": "show version",
+    "success_pattern": "Version|version",
+    "error_pattern": "Error|error"
+  },
+  "juniper|junos|bgp_process_running": {
+    "command": "show version",
+    "success_pattern": "Version|version",
+    "error_pattern": "Error|error"
+  },
+  "cisco|ios-xr|bgp_prefix_nonzero": {
+    "command": "show version",
+    "success_pattern": "Version|version",
+    "error_pattern": "Error|error"
+  }
+}

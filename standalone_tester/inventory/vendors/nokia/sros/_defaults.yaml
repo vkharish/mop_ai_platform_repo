@@ -1,0 +1,16 @@
+vendor: nokia
+os: sros
+capabilities:
+  protocols: [bgp, isis, ospf, mpls, ldp, rsvp-te, bfd]
+  features: [graceful-restart, traffic-engineering, evpn]
+commands:
+  show_version: "show system information"
+  show_interfaces: "show port"
+  cpu_check: "show system cpu"
+  memory_check: "show system memory-pools"
+  lldp_neighbors: "show system lldp neighbor"
+quirks:
+  prompt_pattern: "[AB]:\\S+[#>]"
+  commit_required: false
+  config_mode_cmd: "configure"
+  exit_cmd: "exit all"

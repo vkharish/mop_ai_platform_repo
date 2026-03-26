@@ -1,0 +1,28 @@
+groups:
+  all_pe:
+    description: All PE routers across all topologies
+    role_filter: pe-router
+
+  all_p:
+    description: All P (core) routers
+    role_filter: p-router
+
+  all_rr:
+    description: All route reflectors
+    role_filter: route-reflector
+
+  all_cisco:
+    description: All Cisco devices
+    vendor_filter: cisco
+
+  all_juniper:
+    description: All Juniper devices
+    vendor_filter: juniper
+
+  all_nokia:
+    description: All Nokia devices
+    vendor_filter: nokia
+
+  core_facing:
+    description: Devices with MPLS roles
+    role_filter: [pe-router, p-router]

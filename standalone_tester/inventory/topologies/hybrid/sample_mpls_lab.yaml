@@ -1,0 +1,46 @@
+name: Sample MPLS Core Lab
+description: Mixed vendor MPLS core — 2x Cisco PE, 1x Nokia P, 1x Juniper RR
+
+devices:
+  PE1:
+    ref: cisco/ios-xr/asr9000
+    version: "7.5.1"
+    role: pe-router
+    connection:
+      host: "192.168.100.1"
+      port: 22
+    credentials_env: PE1_CREDS
+
+  PE2:
+    ref: cisco/ios-xr/ncs5500
+    version: "7.7.1"
+    role: pe-router
+    connection:
+      host: "192.168.100.2"
+      port: 22
+    credentials_env: PE2_CREDS
+
+  P1:
+    ref: nokia/sros/7750-sr
+    version: "23.10.R1"
+    role: p-router
+    connection:
+      host: "192.168.100.3"
+      port: 22
+    credentials_env: P1_CREDS
+
+  RR1:
+    ref: juniper/junos/mx-series
+    version: "22.4R1"
+    role: route-reflector
+    connection:
+      host: "192.168.100.4"
+      port: 22
+    credentials_env: RR1_CREDS
+
+links:
+  - {from: PE1, to: P1, protocol: "isis,mpls"}
+  - {from: PE2, to: P1, protocol: "isis,mpls"}
+  - {from: PE1, to: RR1, protocol: bgp}
+  - {from: PE2, to: RR1, protocol: bgp}
+  - {from: P1, to: RR1, protocol: isis}

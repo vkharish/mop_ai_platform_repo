@@ -1,0 +1,15 @@
+vendor: cisco
+os: ios-xe
+capabilities:
+  protocols: [bgp, ospf, isis, mpls, bfd, lacp]
+commands:
+  show_version: "show version"
+  show_interfaces: "show ip interface brief"
+  cpu_check: "show processes cpu sorted"
+  memory_check: "show processes memory sorted"
+  lldp_neighbors: "show lldp neighbors detail"
+quirks:
+  prompt_pattern: "\\S+[#>]"
+  commit_required: false
+  config_mode_cmd: "conf t"
+  exit_cmd: "end"

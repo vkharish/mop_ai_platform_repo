@@ -1,0 +1,5 @@
+model: MX-Series
+description: Juniper MX Series 3D Universal Edge Router
+capabilities:
+  protocols: [bgp, isis, ospf, mpls, ldp, rsvp, bfd, lacp, evpn]
+  features: [graceful-restart, unified-issu, nsr]

@@ -1,0 +1,15 @@
+vendor: arista
+os: eos
+capabilities:
+  protocols: [bgp, ospf, isis, mpls, bfd, lacp, evpn]
+commands:
+  show_version: "show version"
+  show_interfaces: "show interfaces status"
+  cpu_check: "show processes top once"
+  memory_check: "show version | grep Memory"
+  lldp_neighbors: "show lldp neighbors detail"
+quirks:
+  prompt_pattern: "\\S+[#>]"
+  commit_required: false
+  config_mode_cmd: "configure"
+  exit_cmd: "end"

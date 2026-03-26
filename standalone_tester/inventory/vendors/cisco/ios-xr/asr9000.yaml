@@ -1,0 +1,6 @@
+model: ASR9000
+description: Cisco ASR 9000 Series Aggregation Services Router
+capabilities:
+  protocols: [bgp, isis, ospf, mpls, ldp, rsvp-te, bfd, segment-routing, lacp]
+  features: [graceful-restart, evpn, traffic-engineering, nsr, sso]
+  max_interfaces: 96

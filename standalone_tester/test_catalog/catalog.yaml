@@ -1,0 +1,191 @@
+protocols:
+  bgp:
+    smoke:
+      - id: bgp_neighbors_up
+        intent: "All configured BGP neighbors are in Established state"
+        severity: critical
+      - id: bgp_prefix_nonzero
+        intent: "BGP routing table has at least one prefix"
+        severity: high
+
+    gating:
+      - id: bgp_neighbors_up
+        intent: "All configured BGP neighbors are in Established state"
+        severity: critical
+      - id: bgp_prefix_count
+        intent: "BGP prefix count is non-zero and within normal range"
+        severity: high
+      - id: bgp_rr_sessions
+        intent: "Route reflector client sessions are all active"
+        severity: high
+      - id: bgp_process_running
+        intent: "BGP routing process is active and not restarting"
+        severity: critical
+
+    certification:
+      - id: bgp_neighbors_up
+        intent: "All configured BGP neighbors are in Established state"
+        severity: critical
+      - id: bgp_convergence_time
+        intent: "BGP session re-establishes within 30 seconds after reset"
+        sla_seconds: 30
+        severity: critical
+      - id: bgp_graceful_restart
+        intent: "BGP graceful restart capability is negotiated with all peers"
+        severity: high
+      - id: bgp_route_policy
+        intent: "Outbound route policy is applied and communities are set correctly"
+        severity: high
+      - id: bgp_path_selection
+        intent: "BGP best path selection follows configured local-preference policy"
+        severity: medium
+      - id: bgp_prefix_limit
+        intent: "No BGP session is close to its configured prefix limit"
+        severity: medium
+
+  isis:
+    smoke:
+      - id: isis_adjacencies_up
+        intent: "All IS-IS adjacencies are in UP state"
+        severity: critical
+      - id: isis_process_running
+        intent: "IS-IS routing process is active"
+        severity: critical
+
+    gating:
+      - id: isis_adjacencies_up
+        intent: "All IS-IS adjacencies are in UP state"
+        severity: critical
+      - id: isis_lsp_database
+        intent: "IS-IS LSP database is populated and not empty"
+        severity: high
+      - id: isis_overload_bit
+        intent: "IS-IS overload bit is NOT set"
+        severity: critical
+
+    certification:
+      - id: isis_adjacencies_up
+        intent: "All IS-IS adjacencies are in UP state"
+        severity: critical
+      - id: isis_convergence_time
+        intent: "IS-IS reconverges within 5 seconds after link failure"
+        sla_seconds: 5
+        severity: critical
+      - id: isis_te_database
+        intent: "IS-IS TE topology database is populated for all nodes"
+        severity: high
+      - id: isis_spf_timer
+        intent: "IS-IS SPF timer is configured for fast convergence"
+        severity: medium
+
+  mpls:
+    smoke:
+      - id: mpls_ldp_sessions
+        intent: "All LDP sessions are operational"
+        severity: critical
+      - id: mpls_fib_populated
+        intent: "MPLS forwarding table has active label entries"
+        severity: high
+
+    gating:
+      - id: mpls_ldp_sessions
+        intent: "All LDP sessions are operational"
+        severity: critical
+      - id: mpls_lsp_count
+        intent: "Number of active MPLS LSPs is within expected range"
+        severity: high
+      - id: mpls_rsvp_sessions
+        intent: "All RSVP-TE tunnel sessions are up"
+        severity: high
+
+    certification:
+      - id: mpls_ldp_sessions
+        intent: "All LDP sessions are operational"
+        severity: critical
+      - id: mpls_frr_ready
+        intent: "MPLS Fast Reroute backup paths are pre-computed and ready"
+        severity: critical
+      - id: mpls_frr_switchover
+        intent: "FRR protection switchover completes within 50ms"
+        sla_ms: 50
+        severity: critical
+      - id: mpls_te_cspf
+        intent: "CSPF path computation succeeds for all TE tunnels"
+        severity: high
+
+  interface:
+    smoke:
+      - id: interfaces_up
+        intent: "All expected physical interfaces are in up/up state"
+        severity: critical
+      - id: no_interface_errors
+        intent: "No input or output errors on any interface in the last 5 minutes"
+        severity: high
+
+    gating:
+      - id: interfaces_up
+        intent: "All expected physical interfaces are in up/up state"
+        severity: critical
+      - id: no_interface_errors
+        intent: "No input or output errors on any interface"
+        severity: high
+      - id: bfd_sessions_up
+        intent: "All BFD sessions are in Up state"
+        severity: high
+
+    certification:
+      - id: interfaces_up
+        intent: "All expected physical interfaces are in up/up state"
+        severity: critical
+      - id: lacp_bundles_up
+        intent: "All LAG/LACP bundles have all member links active"
+        severity: high
+      - id: interface_counters_clean
+        intent: "No CRC errors, input errors, or output drops on any interface"
+        severity: high
+
+  system:
+    smoke:
+      - id: cpu_normal
+        intent: "CPU utilization is below 80 percent"
+        threshold_pct: 80
+        severity: high
+      - id: memory_normal
+        intent: "Memory utilization is below 85 percent"
+        threshold_pct: 85
+        severity: high
+
+    gating:
+      - id: cpu_normal
+        intent: "CPU utilization is below 80 percent"
+        threshold_pct: 80
+        severity: high
+      - id: memory_normal
+        intent: "Memory utilization is below 85 percent"
+        threshold_pct: 85
+        severity: high
+      - id: no_crashed_processes
+        intent: "No system processes are in crashed or restarting state"
+        severity: critical
+      - id: ntp_synchronized
+        intent: "NTP is synchronized to a stratum 1 or 2 source"
+        severity: medium
+
+    certification:
+      - id: cpu_normal
+        intent: "CPU utilization is below 80 percent under test load"
+        threshold_pct: 80
+        severity: high
+      - id: memory_normal
+        intent: "Memory utilization is below 85 percent"
+        threshold_pct: 85
+        severity: high
+      - id: no_crashed_processes
+        intent: "No system processes are in crashed or restarting state"
+        severity: critical
+      - id: core_files
+        intent: "No new core dump files generated during test"
+        severity: critical
+      - id: syslog_clean
+        intent: "No unexpected ERROR or CRITICAL syslog messages during test"
+        severity: high

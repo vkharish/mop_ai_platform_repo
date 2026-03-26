@@ -1,0 +1,15 @@
+vendor: ericsson
+os: ipos
+capabilities:
+  protocols: [bgp, isis, ospf, mpls, ldp, rsvp-te, bfd]
+commands:
+  show_version: "show version"
+  show_interfaces: "show interface summary"
+  cpu_check: "show system cpu"
+  memory_check: "show system memory"
+  lldp_neighbors: "show lldp neighbors"
+quirks:
+  prompt_pattern: "\\S+[#>]"
+  commit_required: false
+  config_mode_cmd: "configure"
+  exit_cmd: "end"

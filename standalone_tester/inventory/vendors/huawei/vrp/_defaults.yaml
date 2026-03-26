@@ -1,0 +1,15 @@
+vendor: huawei
+os: vrp
+capabilities:
+  protocols: [bgp, isis, ospf, mpls, ldp, rsvp-te, bfd]
+commands:
+  show_version: "display version"
+  show_interfaces: "display interface brief"
+  cpu_check: "display cpu-usage"
+  memory_check: "display memory-usage"
+  lldp_neighbors: "display lldp neighbor brief"
+quirks:
+  prompt_pattern: "<\\S+>"
+  commit_required: false
+  config_mode_cmd: "system-view"
+  exit_cmd: "quit"

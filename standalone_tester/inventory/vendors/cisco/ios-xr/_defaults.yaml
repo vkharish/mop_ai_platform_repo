@@ -1,0 +1,18 @@
+vendor: cisco
+os: ios-xr
+capabilities:
+  protocols: [bgp, isis, ospf, mpls, ldp, rsvp-te, bfd, segment-routing]
+  features: [graceful-restart, evpn, traffic-engineering]
+commands:
+  show_version: "show version"
+  show_hostname: "show run | inc hostname"
+  show_interfaces: "show interfaces brief"
+  cpu_check: "show processes cpu"
+  memory_check: "show processes memory summary"
+  lldp_neighbors: "show lldp neighbors detail"
+quirks:
+  prompt_pattern: "RP/0/\\S+/CPU\\d+:\\S+[#$]"
+  commit_required: true
+  admin_mode_cmd: "admin"
+  config_mode_cmd: "conf t"
+  exit_cmd: "end"

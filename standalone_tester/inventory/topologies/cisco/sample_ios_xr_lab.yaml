@@ -1,0 +1,35 @@
+name: Cisco IOS-XR Lab
+description: Single vendor Cisco IOS-XR lab for upgrade certification
+
+devices:
+  PE1:
+    ref: cisco/ios-xr/asr9000
+    version: "7.5.1"
+    role: pe-router
+    connection:
+      host: "10.0.0.1"
+      port: 22
+    credentials_env: LAB_CREDS
+
+  PE2:
+    ref: cisco/ios-xr/asr9000
+    version: "7.5.1"
+    role: pe-router
+    connection:
+      host: "10.0.0.2"
+      port: 22
+    credentials_env: LAB_CREDS
+
+  P1:
+    ref: cisco/ios-xr/ncs5500
+    version: "7.5.1"
+    role: p-router
+    connection:
+      host: "10.0.0.3"
+      port: 22
+    credentials_env: LAB_CREDS
+
+links:
+  - {from: PE1, to: P1, protocol: "isis,mpls,rsvp-te"}
+  - {from: PE2, to: P1, protocol: "isis,mpls,rsvp-te"}
+  - {from: PE1, to: PE2, protocol: bgp}

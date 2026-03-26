@@ -1,0 +1,5 @@
+model: 7750-SR
+description: Nokia 7750 Service Router
+capabilities:
+  protocols: [bgp, isis, ospf, mpls, ldp, rsvp-te, bfd, segment-routing]
+  features: [graceful-restart, traffic-engineering, evpn, vprn]

@@ -1,0 +1,17 @@
+vendor: juniper
+os: junos
+capabilities:
+  protocols: [bgp, isis, ospf, mpls, ldp, rsvp, bfd, lacp]
+  features: [graceful-restart, evpn, traffic-engineering]
+commands:
+  show_version: "show version"
+  show_interfaces: "show interfaces terse"
+  cpu_check: "show system processes extensive | head 20"
+  memory_check: "show system memory"
+  lldp_neighbors: "show lldp neighbors"
+quirks:
+  prompt_pattern: "\\S+[>#]"
+  commit_required: true
+  config_mode_cmd: "configure"
+  commit_cmd: "commit"
+  exit_cmd: "exit"

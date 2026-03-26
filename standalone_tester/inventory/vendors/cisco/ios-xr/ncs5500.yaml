@@ -1,0 +1,6 @@
+model: NCS5500
+description: Cisco Network Convergence System 5500 Series
+capabilities:
+  protocols: [bgp, isis, mpls, segment-routing, bfd]
+  features: [graceful-restart, evpn, segment-routing-te]
+  max_interfaces: 64
